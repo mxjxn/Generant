@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {Store,demoProject as newProject,upgrade,validate} from '../shared/model.mjs';
-import {insertPosition,makeUnique,removePosition,movePosition,setPatternRows,compileSong,selectPattern} from '../shared/song.mjs';
+import {insertPosition,makeUnique,removePosition,movePosition,setPatternRows,setPatternLPB,compileSong,selectPattern} from '../shared/song.mjs';
 import {addOscTrack,addOscEvent,exportOscScore} from '../shared/osc-score.mjs';
 import {editNoteCell} from '../shared/tracker.mjs';
 const legacy=newProject(),s=new Store(legacy);assert.equal(s.project.version,3);assert.deepEqual(s.project.notes,legacy.notes);assert.equal(s.project.song.order.length,1);assert.equal(s.project.song.patterns.length,1);
@@ -10,6 +10,7 @@ s.edit(p=>p.notes[0].pitch=62);assert.equal(compileSong(s.project).notes[1].pitc
 s.edit(p=>makeUnique(p,second));assert.equal(s.project.song.patterns.length,2);s.edit(p=>{p.notes=[];editNoteCell(p,'keys',1,0,'OFF');p.song.order[1].cues.push({id:'cue',beat:0,kind:'event',address:'/song/return',args:[],curve:'hold'});});
 let out=compileSong(s.project,{mode:'song',loop:false});assert.equal(out.notes[0].duration,5);assert.equal(out.bars,2);assert.equal(exportOscScore(out).events.filter(e=>e.address==='/pattern').length,2);assert.equal(exportOscScore(out).events.find(e=>e.address==='/song/return').seconds,4*60/s.project.bpm);
 s.edit(p=>{third=insertPosition(p,second,{kind:'new'});setPatternRows(p,7,8);});out=compileSong(s.project,{mode:'song'});assert.equal(out.playback.total,8.875);assert.equal(out.playback.segments[2].beats,.875);
+const beforeRate=structuredClone(s.project);s.edit(p=>setPatternLPB(p,4));assert.equal(s.project.song.patterns.find(x=>x.id===s.project.song.editPatternId).lpb,4);assert.equal(s.project.song.patterns.find(x=>x.id===s.project.song.editPatternId).rows,Math.round(beforeRate.bars*4*4));assert.deepEqual(s.project.notes,beforeRate.notes);assert.deepEqual(s.project.drums,beforeRate.drums);assert.deepEqual(s.project.studio.oscTracks,beforeRate.studio.oscTracks);s.undo();assert.deepEqual(s.project.notes,beforeRate.notes);
 const count=s.project.song.patterns.length;s.edit(p=>removePosition(p,third));assert.equal(s.project.song.patterns.length,count);s.undo();assert.equal(s.project.song.order.length,3);s.redo();assert.equal(s.project.song.order.length,2);
 s.edit(p=>movePosition(p,second,-1));assert.equal(s.project.song.order[0].cues[0].address,'/song/return');out=compileSong(s.project);assert.equal(exportOscScore(out).events.find(e=>e.address==='/song/return').seconds,0);
 assert.deepEqual(upgrade(JSON.parse(JSON.stringify(s.project))),s.project);const bad=structuredClone(s.project);bad.song.order[0].patternId='missing';assert.throws(()=>validate(bad));

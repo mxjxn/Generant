@@ -1,4 +1,4 @@
-import {currentPattern,insertPosition,makeUnique,removePosition,movePosition,setPatternRows,selectPattern,compileSong} from '/shared/song.mjs';
+import {currentPattern,insertPosition,makeUnique,removePosition,movePosition,setPatternRows,setPatternLPB,selectPattern,compileSong} from '/shared/song.mjs';
 import {exportOscScore,positionText,positionBeat} from '/shared/osc-score.mjs';
 import {escape} from './studio-shell.mjs';
 export function songSequencer(root,store,engine,{report,audioAction,selectDevice,selectOsc,finishKeys}){
@@ -24,7 +24,8 @@ export function songSequencer(root,store,engine,{report,audioAction,selectDevice
  root.querySelectorAll('[data-pattern-ref]').forEach(el=>el.onchange=()=>{const value=el.value,id=el.dataset.patternRef;structural(p=>{p.song.order.find(e=>e.id===id).patternId=value;selected=id;selectPattern(p,value);});});
  root.querySelectorAll('[data-section]').forEach(el=>el.onchange=()=>edit(p=>p.song.order.find(e=>e.id===el.dataset.section).section=el.value));
  $('[data-pattern-name]').onchange=e=>edit(p=>currentPattern(p).name=e.target.value);
- for(const q of ['[data-pattern-rows]','[data-pattern-lpb]'])$(q).onchange=()=>{const rows=+$('[data-pattern-rows]').value,lpb=+$('[data-pattern-lpb]').value;structural(p=>setPatternRows(p,rows,lpb));};
+ $('[data-pattern-rows]').onchange=()=>{const rows=+$('[data-pattern-rows]').value;structural(p=>setPatternRows(p,rows,currentPattern(p).lpb));};
+ $('[data-pattern-lpb]').onchange=()=>{const lpb=+$('[data-pattern-lpb]').value;structural(p=>setPatternLPB(p,lpb));};
  for(const q of ['[data-song-range-start]','[data-song-range-end]'])$(q).onchange=()=>{const a=$('[data-song-range-start]').value,b=$('[data-song-range-end]').value;audioAction(async()=>{await engine.stop();if(a){const start=s.order.findIndex(e=>e.id===a),end=b?s.order.findIndex(e=>e.id===b):s.order.length-1;if(end<start)throw Error('Loop end must follow its start');rangeStart=a;rangeEnd=s.order[end].id;engine.playbackOptions.loop=true;}else rangeStart=rangeEnd='';render();});};
  $('[data-position-cue]').onclick=()=>structural(p=>p.song.order.find(e=>e.id===selected).cues.push({id:crypto.randomUUID(),beat:0,kind:'event',address:'/song/part1',args:[],curve:'hold'}));
  root.querySelectorAll('[data-pos-cue]').forEach(row=>{for(const el of row.querySelectorAll('[data-cue-field]'))el.onchange=()=>{try{const field=el.dataset.cueField,value=field==='beat'?positionBeat(el.value):field==='args'?JSON.parse(el.value):el.value;structural(p=>p.song.order.find(e=>e.id===selected).cues.find(e=>e.id===row.dataset.posCue)[field]=value);}catch(e){report(e.message,true);el.setAttribute('aria-invalid','true');}};row.querySelector('[data-cue-delete]').onclick=()=>structural(p=>{const e=p.song.order.find(e=>e.id===selected);e.cues=e.cues.filter(x=>x.id!==row.dataset.posCue);});});
