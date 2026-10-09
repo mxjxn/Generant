@@ -5,4 +5,17 @@
 .screenshots-grid figure{margin:0;border:1px solid var(--line);background:#151719}
 .screenshots-grid img{display:block;width:100%;height:auto}
 .screenshots-grid figcaption{padding:13px 16px;color:var(--muted);font:11px 'DM Mono',monospace}
+.carousel{margin-top:26px}
+.carousel-stage{display:grid;grid-template-columns:50px minmax(0,1fr) 50px;align-items:center;gap:12px}
+.carousel-stage figure{margin:0;border:1px solid var(--line);background:#151719}
+.screen-expand{display:block;width:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
+.screen-expand img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain}
+.carousel-stage figcaption{display:flex;justify-content:space-between;padding:14px 17px;color:var(--muted);font:11px 'DM Mono',monospace}
+.carousel-stage figcaption strong{color:var(--ink);font-weight:400}
+.carousel-arrow{width:50px;height:50px;border:1px solid var(--line);background:transparent;color:var(--acid);font:22px 'DM Mono',monospace;cursor:pointer}
+.carousel-arrow:hover{border-color:var(--acid);background:#d6f35d12}
+.carousel-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.carousel-thumbs button{padding:9px 12px;border:1px solid var(--line);background:transparent;color:var(--muted);font:10px 'DM Mono',monospace;cursor:pointer}
+.carousel-thumbs button:hover,.carousel-thumbs button.active{border-color:var(--acid);color:var(--acid)}
+.carousel-note{color:var(--muted);font:10px 'DM Mono',monospace}
 @media(max-width:800px){.screenshots-grid{grid-template-columns:1fr}.hero-shot{object-position:top left}}
