@@ -2,7 +2,7 @@
 
 Generant is a desktop music workstation built on [SuperSonic](https://github.com/samaaron/supersonic). It is part of a personal creative toolkit for building custom instruments, sequencing music, and sending timestamped events to Blender through OSC.
 
-The application is an Electron client. Audio is produced by SuperSonic synthdefs. The UI stores projects as .rack.json files and provides tracker sequencing, song arrangement, device routing, CV connections, presets, MIDI, and OSC score export.
+The application is an Electron client. Audio is produced by Supercollider synthdefs running in SuperSonic. The UI stores projects as .rack.json files and provides tracker sequencing, song arrangement, device routing, CV connections, presets, MIDI, and OSC score export.
 
 ## Run it
 
