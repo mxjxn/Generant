@@ -1,0 +1,8 @@
+.feature-card p{padding-bottom:96px}
+.hero-shot{display:block;width:100%;height:100%;object-fit:cover;object-position:top center;filter:brightness(.72) saturate(.78)}
+.shot-label{position:absolute;left:24px;bottom:22px;padding:7px 9px;background:#101112dd;border:1px solid var(--acid);color:var(--acid);font:10px 'DM Mono',monospace;letter-spacing:.08em}
+.screenshots-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.screenshots-grid figure{margin:0;border:1px solid var(--line);background:#151719}
+.screenshots-grid img{display:block;width:100%;height:auto}
+.screenshots-grid figcaption{padding:13px 16px;color:var(--muted);font:11px 'DM Mono',monospace}
+@media(max-width:800px){.screenshots-grid{grid-template-columns:1fr}.hero-shot{object-position:top left}}
