@@ -1,12 +1,6 @@
 # Renoise integration
 
-Generant includes a Renoise 3.5 / API 6.2 tool at `integrations/renoise/com.mxjxn.GenerantOsc.xrnx` and an installable package at `dist/Generant-Osc-Renoise-1.0.xrnx` after running:
-
-```sh
-./scripts/package-renoise.sh
-```
-
-Install the package in Renoise, then open **Tools → Generant OSC → Open panel**.
+The Renoise tool is maintained separately at [mxjxn/generant-renoise](https://github.com/mxjxn/generant-renoise). That repository contains the installable `.xrnx`, source, and its own documentation.
 
 ## Ports
 
@@ -21,11 +15,9 @@ When **Send tempo, play, and stop** is enabled, Renoise sends the current tempo 
 
 When **Queue selected sequence as song position** is enabled, selecting Renoise sequence 1 queues Generant song position 0, sequence 2 queues position 1, and so on. The two arrangements therefore need corresponding positions.
 
-## Visual cues
+## Tracker events and score export
 
-Enter any non-reserved OSC address and send a number, string, or no arguments. **Pulse 1 → 0** sends `1`, waits for the configured release time, then sends `0`. With OSC Score Bridge listening in Blender, a pulse such as `/visual/kick` updates `Rack OSC Score["osc:/visual/kick"]` live.
-
-The first version sends cues live. Recording Renoise cues into the bridge's JSON score format is a separate step.
+The tool reads two-character mapping IDs and hexadecimal values from effect columns on `[OSC]` tracks. It also reads automation envelopes associated with those mappings. Events can be sent live or exported in the same `rack-osc-score` JSON format that Generant and OSC Score Bridge use.
 
 ## Generant commands
 
