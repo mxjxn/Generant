@@ -1,6 +1,6 @@
-# Renoise integration
+# Renoise OSC Sequencer integration
 
-The Renoise tool is maintained separately at [mxjxn/generant-renoise](https://github.com/mxjxn/generant-renoise). That repository contains the installable `.xrnx`, source, and its own documentation.
+The standalone tool is maintained at [mxjxn/renoise-osc-sequencer](https://github.com/mxjxn/renoise-osc-sequencer). That repository contains the installable `.xrnx`, source, and its own documentation.
 
 ## Ports
 

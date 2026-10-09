@@ -25,7 +25,7 @@ The app starts with an empty project. Demo projects are available from File → 
 - [Instrument and CV devices](docs/instruments.md)
 - [Tracker and song sequencing](docs/sequencer.md)
 - [OSC and Blender integration](docs/osc-blender.md)
-- [Renoise integration](https://github.com/mxjxn/generant-renoise)
+- [Renoise OSC Sequencer integration](https://github.com/mxjxn/renoise-osc-sequencer)
 - [Development and testing](docs/development.md)
 
 ## Tests
