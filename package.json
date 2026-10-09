@@ -9,7 +9,7 @@
     "start": "electron .",
     "dev:web": "node app/server.mjs",
     "compile": "sclang -D sc/compile.scd",
-    "test": "node --test tests/model.test.mjs tests/studio-model.test.mjs tests/tracker.test.mjs tests/fm.test.mjs tests/keyboard.test.mjs tests/wavetable.test.mjs tests/midi.test.mjs tests/osc-score.test.mjs tests/song.test.mjs tests/empty.test.mjs tests/presets.test.mjs tests/devices.test.mjs tests/kit.test.mjs",
+    "test": "node --test tests/model.test.mjs tests/studio-model.test.mjs tests/tracker.test.mjs tests/fm.test.mjs tests/keyboard.test.mjs tests/wavetable.test.mjs tests/midi.test.mjs tests/osc-score.test.mjs tests/remote.test.mjs tests/song.test.mjs tests/empty.test.mjs tests/presets.test.mjs tests/devices.test.mjs tests/kit.test.mjs",
     "test:song": "node tests/song-desktop.mjs",
     "test:osc": "node tests/osc-events-desktop.mjs",
     "test:settings": "node tests/settings-ui.mjs",

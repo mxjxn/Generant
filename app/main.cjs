@@ -6,7 +6,7 @@ else {
  const legacyProfile=path.join(path.dirname(currentProfile),'Rack Studio');
  if(currentProfile!==legacyProfile&&fsSync.existsSync(legacyProfile)&&!fsSync.existsSync(currentProfile))app.setPath('userData',legacyProfile);
 }
-let server,win,osc,projectPath=null,snapshot=null,dirty=false,closing=false,allowClose=false,recoveryTimer,recoveryQueue=Promise.resolve();
+let server,win,osc,remote,projectPath=null,snapshot=null,dirty=false,closing=false,allowClose=false,recoveryTimer,recoveryQueue=Promise.resolve();
 const locked=app.requestSingleInstanceLock();
 if(!locked)app.quit();
 else {
@@ -34,6 +34,8 @@ else {
   ipcMain.handle('osc-enable',(_e,value)=>osc.enable(value));ipcMain.handle('osc-reset',()=>osc.reset());ipcMain.on('osc-send',(_e,batch)=>{try{osc.send(batch);}catch(e){console.error(e.message);}});
   server=await(await import('./server.mjs')).serve();
   win=new BrowserWindow({width:1450,height:960,minWidth:850,minHeight:650,backgroundColor:'#151819',title:'Generant',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  remote=new(await import('./remote.mjs')).GenerantRemote(Number(process.env.GENERANT_OSC_PORT)||57142,command=>win?.webContents.send('remote-command',command),error=>win?.webContents.send('project-error','OSC input: '+error.message));
+  await remote.open().catch(error=>win?.webContents.send('project-error','OSC input unavailable: '+error.message));
   const origin=`http://127.0.0.1:${server.address().port}`;
   const allowed=(contents,permission,url,details={})=>contents===win.webContents&&url?.startsWith(origin+'/')&&(['midi','midiSysex','speaker-selection'].includes(permission)||permission==='media'&&(details.mediaTypes??[details.mediaType]).every(t=>t==='audio'));
   win.webContents.session.setPermissionCheckHandler((contents,permission,url,details)=>allowed(contents,permission,url.endsWith('/')?url:url+'/',details));
@@ -49,11 +51,11 @@ else {
   win.on('close',e=>{
    if(allowClose)return;e.preventDefault();if(closing)return;closing=true;
    (async()=>{try{if(dirty){const {response}=await dialog.showMessageBox(win,{type:'question',message:'Save changes before closing?',detail:'Your saved project will only change if you choose Save.',buttons:['Save','Discard','Cancel'],defaultId:0,cancelId:2,noLink:true});if(response===2)return;if(response===0&&!await save())return;}
-    clearTimeout(recoveryTimer);await recoveryQueue.catch(()=>{});await fs.rm(recoveryPath,{force:true});osc?.close();allowClose=true;win.close();
+    clearTimeout(recoveryTimer);await recoveryQueue.catch(()=>{});await fs.rm(recoveryPath,{force:true});remote?.close();osc?.close();allowClose=true;win.close();
    }catch(error){await dialog.showMessageBox(win,{type:'error',message:'The project could not be closed safely.',detail:error.message});}finally{closing=false;}})();
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'Generant',submenu:[{role:'about'},{type:'separator'},{role:'quit'}]},{label:'Edit',submenu:[{label:'Undo',accelerator:'CmdOrCtrl+Z',click:()=>win.webContents.send('project-command','undo')},{label:'Redo',accelerator:'CmdOrCtrl+Shift+Z',click:()=>win.webContents.send('project-command','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'View',submenu:[{role:'toggleDevTools'},{role:'togglefullscreen'}]}]));
   await win.loadURL(`http://127.0.0.1:${server.address().port}`);
  });
- app.on('window-all-closed',()=>{clearTimeout(recoveryTimer);osc?.close();server?.close();app.quit();});
+ app.on('window-all-closed',()=>{clearTimeout(recoveryTimer);remote?.close();osc?.close();server?.close();app.quit();});
 }

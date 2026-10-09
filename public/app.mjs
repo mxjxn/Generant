@@ -19,7 +19,7 @@ import {Engine} from './audio.mjs';import {PianoRoll} from './roll.mjs';
 import {buildShell,mixerPanel,escape} from './studio-shell.mjs';
 const $=s=>document.querySelector(s),store=new Store(),engine=new Engine(message),pages=buildShell(),padNames=['Kick','Snare','Hat','Texture'];
 let selectedOsc=null,oscSignature='';
-let workspace='sequencer',selectedDevice='keys',selectedTrack='track-keys',selectedChannel='channel-keys',rear=false,pendingPort=null,samplePad=0,busy=false,lastSaved=projectText(store.project),path=null,signature='',navigationKey='';
+let workspace='sequencer',selectedDevice='keys',selectedTrack='track-keys',selectedChannel='channel-keys',rear=false,pendingPort=null,samplePad=0,busy=false,lastSaved=projectText(store.project),path=null,signature='',navigationKey='',remoteQueue=Promise.resolve();
 const positions={sequencer:0,rack:0,mixer:0,samples:0},trackViews=new Map();
 try{workspace=JSON.parse(localStorage.getItem('rack-view')||'{}').workspace||workspace;}catch{}
 if(!['sequencer','rack','mixer','samples'].includes(workspace))workspace='sequencer';
@@ -99,6 +99,18 @@ $('#snap').onchange=e=>{roll.snap=+e.target.value;roll.draw();};$('#zoomIn').onc
 window.addEventListener('keydown',e=>{if(e.defaultPrevented||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();$('#play').click();}if(e.key==='Escape')$('#stop').click();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?store.redo():store.undo();}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();$('#save').click();}});
 if(!window.desktop)window.addEventListener('beforeunload',e=>{if(projectText(store.project)!==lastSaved){e.preventDefault();e.returnValue='';}});
 window.desktop?.onSaved(({text,path:file})=>{lastSaved=projectText(JSON.parse(text));path=file;update();});window.desktop?.onError(text=>message(text,true));window.desktop?.onCommand(command=>command==='undo'?store.undo():store.redo());
+window.desktop?.onRemoteCommand(command=>{remoteQueue=remoteQueue.then(()=>audioAction(async()=>{
+ const findPattern=value=>store.project.song.patterns.find(p=>p.id===value||p.name===value);
+ const positionForPattern=value=>{const pattern=findPattern(value);return pattern&&store.project.song.order.find(e=>e.patternId===pattern.id);};
+ if(command.type==='play'){if(!engine.playing)await engine.play(store.project);}
+ else if(command.type==='stop'){if(engine.playing)await engine.stop();}
+ else if(command.type==='toggle'){if(engine.playing)await engine.stop();else await engine.play(store.project);}
+ else if(command.type==='tempo'){if(engine.playing)throw Error('Stop Generant before changing tempo over OSC.');store.edit(p=>p.bpm=command.bpm);}
+ else if(command.type==='queuePosition'||command.type==='selectPosition'){const entry=store.project.song.order[command.index];if(!entry)throw Error('OSC song position is outside this project.');if(engine.playing&&command.type==='queuePosition')engine.queuePosition(entry.id);else song.choose(entry.id);}
+ else if(command.type==='queuePattern'||command.type==='selectPattern'){const entry=positionForPattern(command.pattern);if(!entry)throw Error('OSC pattern was not found.');if(engine.playing&&command.type==='queuePattern')engine.queuePosition(entry.id);else song.choose(entry.id);}
+ else if(command.type==='deviceParam'){const device=deviceOf(store.project,command.device)??store.project.studio.devices.find(d=>d.name===command.device);if(!device||!(command.param in (device.params??{})))throw Error('OSC device parameter was not found.');store.edit(p=>deviceOf(p,device.id).params[command.param]=command.value);}
+ message('OSC: '+command.type);
+}));});
 function animate(){if(workspace==='sequencer')song.animate();if(workspace==='sequencer'&&selectedOsc)osc.animate();if(workspace==='sequencer'&&!selectedOsc&&editor==='tracker')grid.animate(engine.beat,engine.playing&&engine.playbackPosition?.patternId===store.project.song.editPatternId);if(workspace==='rack')stack.animate();if(workspace==='mixer')mixer.animate();if(workspace==='sequencer'&&editor==='piano'&&!selectedOsc&&['keys','kit'].includes(deviceOf(store.project,track().deviceId)?.type))roll.draw();const beat=engine.beat;$('#position').textContent=`${Math.floor(beat/4)+1} : ${Math.floor(beat%4)+1}`;$('#meterFill').style.width=Math.min(100,Math.sqrt(engine.peak)*100)+'%';$('#peak').textContent=engine.peak>1e-5?units.gain(engine.peak):'−∞ dB';if(workspace==='sequencer'&&!selectedOsc&&deviceOf(store.project,track().deviceId)?.type==='drums')$('#drumEditor').querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('current',engine.playing&&+b.dataset.step.split(',')[1]===Math.floor(beat*4)));requestAnimationFrame(animate);}
 signature=JSON.stringify(store.project.studio.devices.map(d=>[d.id,d.type,d.grainSample?.data,d.params?.fmMode]));
 const hardware=await hardwareSettings({engine,store,grid,getDevice:()=>workspace==='sequencer'&&selectedOsc?null:workspace==='rack'?selectedDevice:track().deviceId,getTrack:()=>track().deviceId,report:message,audioAction});
