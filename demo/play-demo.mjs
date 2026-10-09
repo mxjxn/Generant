@@ -1,0 +1,3 @@
+const {_electron}=await import('/home/mxjxn/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
+const app=await _electron.launch({executablePath:process.cwd()+'/dist/linux-unpacked/rack-studio',args:['--no-sandbox'],timeout:30000});
+const page=await app.firstWindow();await page.waitForFunction(()=>!!window.rack);await page.locator('#ambient').click();await page.waitForFunction(()=>rack.store.project.name.startsWith('Slow glass'));await page.locator('#blender').click();await page.locator('#play').click();await page.waitForFunction(()=>rack.engine.playing);console.log('AMBIENT_DEMO_PLAYING');await app.waitForEvent('close',{timeout:0});

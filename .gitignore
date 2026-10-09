@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+tests/artifacts/
+sample-library/
+dist-*/
+backup/
+**/__pycache__/
+*.blend1

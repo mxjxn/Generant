@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import dgram from 'node:dgram';
+import fs from 'node:fs/promises';
+const {_electron}=await import(process.env.PLAYWRIGHT_MODULE||'/home/mxjxn/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
+const socket=dgram.createSocket('udp4'),packets=[];await new Promise(r=>socket.bind(0,'127.0.0.1',r));socket.on('message',b=>packets.push(Buffer.from(b)));
+function decode(b,at=null){let offset=0;const string=()=>{const end=b.indexOf(0,offset),s=b.toString('utf8',offset,end);offset=Math.ceil((end+1)/4)*4;return s;};const address=string();if(address==='#bundle'){at=b.readUInt32BE(8)+b.readUInt32BE(12)/2**32;offset=16;const out=[];while(offset<b.length){const size=b.readUInt32BE(offset);offset+=4;out.push(...decode(b.subarray(offset,offset+size),at));offset+=size;}return out;}const tags=string(),args=[];for(const t of tags.slice(1)){if(t==='s')args.push(string());else {args.push(t==='i'?b.readInt32BE(offset):b.readFloatBE(offset));offset+=4;}}return[{at,address,args}];}
+const app=await _electron.launch({executablePath:process.env.RACK_EXECUTABLE||process.cwd()+'/node_modules/electron/dist/electron',args:process.env.RACK_EXECUTABLE?['--no-sandbox','--mute-audio']:['.','--no-sandbox','--mute-audio'],env:{...process.env,RACK_PROFILE:'/tmp/rack-bridge-'+process.pid,RACK_OSC_PORT:String(socket.address().port)},timeout:30000});
+try{const page=await app.firstWindow();await page.waitForFunction(()=>!!window.rack);await page.locator('#fileMenu > summary').click();await page.locator('#examplesMenu summary').click();await page.locator('#ambient').click();await page.waitForFunction(()=>rack.store.project.name.startsWith('Slow glass'));
+ await page.evaluate(async()=>{const {editFx}=await import('/shared/tracker.mjs');rack.store.edit(p=>{p.studio.devices.push({id:'osc-proof',type:'osc',name:'OSC proof',oscName:'asteroid.scale',params:{value:0}});editFx(p,'osc-proof',0,0,'01 00','linear');editFx(p,'osc-proof',4,0,'01 FF','linear');});});await page.waitForFunction(()=>!document.querySelector('#play').disabled);
+ assert.equal(await page.evaluate(()=>rack.engine.playing),false);await page.locator('[data-workspace="rack"]').click();
+ await page.getByRole('slider',{name:'Volume Attack',exact:true}).press('Enter');await page.getByLabel('Volume Attack exact value',{exact:true}).fill('1.5');await page.getByLabel('Volume Attack exact value',{exact:true}).press('Enter');assert.equal(await page.evaluate(()=>rack.store.project.params.keys.attack),1.5);
+ await page.locator('aside .utility-menu').last().locator('summary').click();await page.locator('#blender').click();await page.locator('#play').click();await page.waitForFunction(()=>rack.engine.playing);await page.waitForTimeout(1700);
+ const events=packets.flatMap(p=>decode(p)),notes=events.filter(e=>e.address==='/companion/note'),controls=events.filter(e=>e.address==='/rack/control');assert.ok(notes.length>=4);assert.ok(controls.some(e=>e.args[0]==='keys'&&e.args[1]>.01));assert.ok(controls.some(e=>e.args[0]==='motion'));
+ const custom=controls.filter(e=>e.args[0]==='asteroid.scale');assert.ok(custom.length>20);assert.ok(Math.max(...custom.map(e=>e.args[1]))-Math.min(...custom.map(e=>e.args[1]))>.1);
+ for(const event of [...notes,...controls])assert.ok(Math.abs(event.at-(Date.now()/1000+2208988800))<5);
+ for(const event of controls)assert.ok(Number.isFinite(event.args[1])&&event.args[1]>=0&&event.args[1]<=1);
+ assert.ok(await page.evaluate(()=>rack.engine.peak>0));assert.deepEqual(await page.evaluate(()=>rack.engine.errors),[]);
+ await fs.mkdir('tests/artifacts',{recursive:true});await page.screenshot({path:'tests/artifacts/ambient.png',fullPage:true});
+ await page.locator('#stop').click();await page.waitForFunction(()=>!rack.engine.stopping&&!document.querySelector('#play').disabled);await page.waitForTimeout(200);assert.equal(packets.flatMap(p=>decode(p)).at(-1).address,'/rack/reset');const count=packets.length;await page.waitForTimeout(250);assert.equal(packets.length,count);
+ // A short gate with a long release remains alive and audible after note-off.
+ await page.evaluate(async()=>{const p=structuredClone(rack.store.project);p.notes=[{id:'tail',pitch:48,beat:0,duration:.25,velocity:.8}];Object.assign(p.params.keys,{attack:.01,decay:.01,sustain:.8,release:2});p.bpm=120;await rack.engine.play(p);});await page.waitForTimeout(700);assert.ok(await page.evaluate(()=>rack.engine.peak>.001));await page.evaluate(()=>rack.engine.stop());
+ const old=packets.length;await page.locator('#play').click();await page.waitForTimeout(600);assert.ok(packets.slice(old).flatMap(p=>decode(p)).some(e=>e.address==='/companion/note'));await page.locator('#stop').click();await page.waitForTimeout(200);
+ await fs.writeFile('tests/artifacts/bridge-events.json',JSON.stringify(events,null,2));console.log(`PASS ambient controls, audible release tails, ${notes.length} timestamped notes, ${controls.length} bounded controls, reset and restart over actual UDP.`);
+ await page.evaluate(()=>{window.onbeforeunload=null;});
+}finally{await app.evaluate(({app})=>app.exit());socket.close();}

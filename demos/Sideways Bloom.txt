@@ -1,0 +1,40 @@
+SIDEWAYS BLOOM
+160 BPM / 80 BPM halftime feel / 64 bars / 1:36 plus release tail
+
+Revision 4 — Veil / chord transitions
+
+No lead melody. The drums, bass, original stabs and Afterimage carry the song.
+Veil uses the existing four lower chord voices as a soft, dark FM pad, with
+slow attacks, a little stereo detuning and a blurred room. It appears only
+at selected handoffs and stays out of the main grooves and drop.
+
+Bar 03       A quiet Gm9 swell in the introduction.
+Bars 08, 24  Last-chord swells carry the change into the next section.
+Bar 25       One soft chord at the breakdown entrance.
+Bars 31–32   A swelling altered dominant, then three soft Dm9 chord pulses
+             spaced a dotted eighth apart; silence before the drop.
+Bars 48, 56  Chord swells into Soft landing and After hours.
+Bars 58, 61  Sparse outro chords.
+Bar 64       A final quiet Dm9 voicing with a release tail.
+
+The chord-stab GVerb transitions are retained. The rejected lead, its pitch
+modulator and its dedicated saturation/delay/room devices are removed.
+Veil has two stored patches: 00 swell and 01 soft pulse. PR changes the
+articulation before the pre-drop pulses, then resets it in the next pattern.
+
+Harmony A: Dm9 → Bbmaj9(#11) → Gm9 → A7(b9,b13)
+Harmony B: Fmaj9 → Em7b5(11) → A7(b9,b13) → Dm9
+Bass carries the roots; the upper voicings are intentionally rootless.
+Dotted eighth = 0.75 beats; ghost echoes = 0.375 beats.
+
+Six instruments: Velvet stabs, Stab ghosts, Root bass, Veil transition chords,
+Afterimage and 909 heel & toe. Two effects: Veil room and Velvet transition bloom.
+Drums, harmony and accompaniment notes are unchanged from revision 3.
+The previous version is in backup/sideways-bloom-hush-v3/ for comparison.
+Velvet program slots: 00 dry / 01 open / 02 low light.
+
+Drum source: your local Samples From Mars / Essential WAV From Mars
+16 Bit / 909 From Mars library. Kick: Color 03 Short D 04;
+clap blended with SD Clean E 03; CH Clean 01; Rim Clean.
+Hits are mono, trimmed and embedded in the project for portable playback.
+The composition generator is scripts/compose-footwork.mjs.

@@ -1,0 +1,49 @@
+import {extraSpecs,isEffect,chain,writeChain} from '/shared/devices.mjs';
+import {Controls,units} from './controls.mjs';
+import {deviceOf,channelOf,connected,setOutput,setInsert,appendInsert,removeInsert} from '/shared/studio.mjs';
+export const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function buildShell(){
+ const $=s=>document.querySelector(s),space=$('.workspace');
+ $('.brand').remove();
+ const nav=document.createElement('nav');nav.id='workspaceNav';nav.setAttribute('aria-label','Studio workspace');nav.innerHTML=['sequencer','rack','mixer','samples'].map(id=>`<button data-workspace="${id}">${id[0].toUpperCase()+id.slice(1)}</button>`).join('');$('header').prepend(nav);const settings=document.createElement('button');settings.id='hardwareButton';settings.textContent='Settings';settings.title='Audio / MIDI settings';$('header').append(settings);
+ const rack=document.createElement('div');rack.id='rackPage';rack.innerHTML='<div id="rackStack"></div>';space.prepend(rack);
+ const front=$('#front'),back=$('#back');front.textContent='Front';back.textContent='Back';
+ $('.rack-section').remove();$('#envelopes').remove();
+ const seq=document.createElement('div');seq.id='sequencerPage';seq.append($('.editor-section'));space.prepend(seq);
+ const intro=document.createElement('div');intro.className='sequence-toolbar';intro.innerHTML='<strong id="trackHeading"></strong><span id="clipLabel" hidden></span><button id="showTrackDevice">Device ↗</button><button id="showTrackChannel">Mixer ↗</button>';seq.prepend(intro);
+ $('.editor-tabs').innerHTML='<strong id="editorKind"></strong><select id="editorMode" aria-label="Sequence editor"><option value="tracker">Tracker</option></select>';
+ const mixer=document.createElement('section');mixer.id='mixerPage';mixer.innerHTML='<div id="mixerChannels"></div>';space.insertBefore(mixer,$('footer'));
+ const samples=document.createElement('section');samples.id='samplesPage';space.insertBefore(samples,$('footer'));
+ const code=$('#codeEditor');space.insertBefore(code,$('footer'));
+ const files=document.createElement('details');files.className='utility-menu';files.id='fileMenu';files.innerHTML='<summary>File</summary><div class="menu-items"></div>';$('header').prepend(files);const menu=files.querySelector('div');
+ for(const [id,label] of [['newProject','New project'],['emptyProject','New empty project'],['saveDefault','Use current project as default'],['clearDefault','Clear default project'],['demoGlass','Glass rhythm']]){const b=document.createElement('button');b.id=id;b.textContent=label;menu.append(b);}
+ for(const id of ['load','save','ambient'])menu.append($('#'+id));$('#save').textContent='Save project';$('#ambient').textContent='Demo: Slow glass ambient';
+ const examples=document.createElement('details');examples.id='examplesMenu';examples.innerHTML='<summary>Open Example</summary><div class=example-items></div>';menu.append(examples);const bloom=document.createElement('button');bloom.id='demoFootwork';bloom.textContent='Sideways Bloom · Footwork';examples.querySelector('div').append(bloom,$('#demoGlass'),$('#ambient'));$('#ambient').textContent='Slow glass ambient';
+ const saveAs=document.createElement('button');saveAs.id='saveAs';saveAs.textContent='Save as…';menu.append(saveAs);
+ const rename=document.createElement('button');rename.id='renameProject';rename.textContent='Rename project…';menu.append(rename);
+ const codeButton=document.createElement('button');codeButton.id='codeToggle';codeButton.textContent='Project code';menu.append(codeButton);
+ const projectName=$('#projectName');projectName.hidden=true;document.body.append(projectName);
+ const path=document.createElement('small');path.id='projectPath';path.hidden=true;document.body.append(path);
+ const aside=$('aside'),navList=$('#deviceNav'),bottom=$('.aside-bottom');aside.replaceChildren(bottom);
+ const add=document.createElement('details');add.id='deviceActions';add.className='utility-menu';add.innerHTML=`<summary>Add Device…</summary><div class="menu-items"><small>Instruments</small><button data-add="keys">Four FM</button><button data-add="cloud">Granular Clouds</button><button data-add="vco">VCO</button><button data-add="kit">Drum Rack</button><button data-add="drums">Tape Drums</button><button data-add="wavetable">Envelope Wavetable…</button><small>Effects</small><button data-add="shaper">Contour</button>${Object.entries(extraSpecs).filter(([,s])=>s.kind==='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<small>Control</small>${Object.entries(extraSpecs).filter(([,s])=>s.kind!=='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<button data-add="motion">Motion</button><button data-add="osc">OSC Control</button></div>`;aside.append(add);
+ const flip=document.createElement('div');flip.id='rackFlip';flip.className='segmented';flip.append(front,back);aside.append(flip,navList);
+ const utilities=document.createElement('details');utilities.className='utility-menu';utilities.innerHTML='<summary>Audio / OSC</summary><div class="menu-items"></div>';utilities.querySelector('div').append($('#blender'),$('#bridgeState'),$('#enable'));aside.append(utilities);
+ const output=document.createElement('div');output.id='compactOutput';output.append($('#meterFill').parentElement,$('#peak'));$('.transport').append(output);
+ const routing=$('#routingSummary');routing.hidden=true;document.body.append(routing);
+ bottom.hidden=true;aside.append(bottom);
+ const browserTitle=document.createElement('span');browserTitle.id='browserTitle';browserTitle.hidden=true;aside.append(browserTitle);
+ $('footer>span:last-child').hidden=true;$('#message').textContent='Ready';
+ return{seq,rack,mixer,samples,code};
+}
+export function mixerPanel(root,store,engine,report,onDevice,onChannel){
+ const controls=new Controls(store,engine,report);let shape='';
+ function render(selected){const p=store.project,key=JSON.stringify(p.studio.channels.map(c=>[c.id,c.deviceId,chain(c)]))+JSON.stringify(p.studio.devices.map(d=>[d.id,d.name]));
+ if(key!==shape){shape=key;root.innerHTML='';for(const c of p.studio.channels){const d=deviceOf(p,c.deviceId),strip=document.createElement('article');strip.className='channel-strip';strip.dataset.channel=c.id;strip.innerHTML=`<button class="channel-title">${escape(d.name)}</button><small>${d.type==='drums'?'Drum instrument':'Synth instrument'}</small><div class=insert-chain>${chain(c).map((id,i)=>`<div><button data-edit-effect="${id}">${i+1} · ${escape(deviceOf(p,id).name)}</button><button data-move-effect="${id}" ${i===0?'disabled':''}>↑</button><button data-remove-effect="${id}" aria-label="Remove insert">×</button></div>`).join('')}</div><label>Add insert <select data-insert="${c.id}" aria-label="${escape(d.name)} insert"><option value="">No insert</option>${p.studio.devices.filter(d=>isEffect(d)&&!chain(c).includes(d.id)).map(d=>`<option value="${d.id}">${escape(d.name)}</option>`).join('')}</select></label><button class="open-insert" ${c.insert?'':'disabled'}>Edit effect ↗</button><div class="channel-controls"></div><div class="channel-meter"><i></i></div><output class="channel-db">−∞ dB</output><div class="channel-switches"><button data-mute>Mute</button><button data-solo>Solo</button></div><label>Output <select data-output aria-label="${escape(d.name)} output"><option value="1">Master</option><option value="0">Disconnected</option></select></label><button class="open-instrument">Show instrument ↗</button>`;root.append(strip);
+ const get=p=>p.studio.channels.find(x=>x.id===c.id);controls.add(strip.querySelector('.channel-controls'),{name:d.name+' level',min:-60,max:6,initial:0,slider:true,format:units.db,get:p=>get(p).level,set:(p,v)=>get(p).level=v});controls.add(strip.querySelector('.channel-controls'),{name:d.name+' pan',min:-1,max:1,initial:0,format:v=>Math.abs(v)<.005?'Center':Math.round(Math.abs(v)*100)+(v<0?' L':' R'),get:p=>get(p).pan,set:(p,v)=>get(p).pan=v});
+ strip.querySelector('.channel-title').onclick=()=>onChannel(c.id);strip.querySelector('.open-instrument').onclick=()=>onDevice(c.deviceId);strip.querySelector('.open-insert').onclick=()=>onDevice(get(store.project).insert);strip.querySelectorAll('[data-edit-effect]').forEach(b=>b.onclick=()=>onDevice(b.dataset.editEffect));strip.querySelectorAll('[data-remove-effect]').forEach(b=>b.onclick=()=>store.edit(p=>removeInsert(p,b.dataset.removeEffect)));strip.querySelectorAll('[data-move-effect]').forEach(b=>b.onclick=()=>store.edit(p=>{const ch=p.studio.channels.find(x=>x.id===c.id),ids=[...chain(ch)],i=ids.indexOf(b.dataset.moveEffect);[ids[i-1],ids[i]]=[ids[i],ids[i-1]];writeChain(ch,ids);}));strip.querySelector('[data-insert]').onchange=e=>{if(e.target.value)store.edit(p=>appendInsert(p,c.id,e.target.value));};strip.querySelector('[data-output]').onchange=e=>store.edit(p=>setOutput(p,c.deviceId,e.target.value==='1'));for(const k of ['mute','solo'])strip.querySelector('[data-'+k+']').onclick=()=>store.edit(p=>get(p)[k]=!get(p)[k]);
+ }}
+ controls.update();for(const c of p.studio.channels){const el=root.querySelector(`[data-channel="${c.id}"]`);el.classList.toggle('selected',selected===c.id);el.querySelector('[data-insert]').value='';el.querySelector('[data-output]').value=connected(p,c.deviceId)?'1':'0';for(const k of ['mute','solo']){el.querySelector('[data-'+k+']').classList.toggle('active',c[k]);el.querySelector('[data-'+k+']').setAttribute('aria-pressed',c[k]);}}
+ }
+ function animate(){store.project.studio.channels.forEach((c,i)=>{const el=root.querySelector(`[data-channel="${c.id}"]`);if(!el)return;const v=engine.channelMeters?.[i]??0;el.querySelector('.channel-meter i').style.height=Math.min(100,Math.max(0,(20*Math.log10(v||1e-6)+60)/60*100))+'%';el.querySelector('.channel-db').textContent=v>1e-5?units.gain(v):'−∞ dB';});}
+ return{render,animate};
+}

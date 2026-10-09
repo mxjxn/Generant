@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {Store,demoProject as newProject,upgrade,validate} from '../shared/model.mjs';
+import {insertPosition,makeUnique,removePosition,movePosition,setPatternRows,compileSong,selectPattern} from '../shared/song.mjs';
+import {addOscTrack,addOscEvent,exportOscScore} from '../shared/osc-score.mjs';
+import {editNoteCell} from '../shared/tracker.mjs';
+const legacy=newProject(),s=new Store(legacy);assert.equal(s.project.version,3);assert.deepEqual(s.project.notes,legacy.notes);assert.equal(s.project.song.order.length,1);assert.equal(s.project.song.patterns.length,1);
+let first=s.project.song.order[0].id,second,third,osc;
+s.edit(p=>{setPatternRows(p,16);p.notes=[{id:'held',beat:0,pitch:60,velocity:.8,column:0,duration:4,tie:true}];p.drums=p.drums.map(r=>r.map(()=>false));osc=addOscTrack(p);addOscEvent(p,osc,{address:'/pattern'});second=insertPosition(p,first);});assert.equal(s.project.song.patterns.length,1);
+s.edit(p=>p.notes[0].pitch=62);assert.equal(compileSong(s.project).notes[1].pitch,62);
+s.edit(p=>makeUnique(p,second));assert.equal(s.project.song.patterns.length,2);s.edit(p=>{p.notes=[];editNoteCell(p,'keys',1,0,'OFF');p.song.order[1].cues.push({id:'cue',beat:0,kind:'event',address:'/song/return',args:[],curve:'hold'});});
+let out=compileSong(s.project,{mode:'song',loop:false});assert.equal(out.notes[0].duration,5);assert.equal(out.bars,2);assert.equal(exportOscScore(out).events.filter(e=>e.address==='/pattern').length,2);assert.equal(exportOscScore(out).events.find(e=>e.address==='/song/return').seconds,4*60/s.project.bpm);
+s.edit(p=>{third=insertPosition(p,second,{kind:'new'});setPatternRows(p,7,8);});out=compileSong(s.project,{mode:'song'});assert.equal(out.playback.total,8.875);assert.equal(out.playback.segments[2].beats,.875);
+const count=s.project.song.patterns.length;s.edit(p=>removePosition(p,third));assert.equal(s.project.song.patterns.length,count);s.undo();assert.equal(s.project.song.order.length,3);s.redo();assert.equal(s.project.song.order.length,2);
+s.edit(p=>movePosition(p,second,-1));assert.equal(s.project.song.order[0].cues[0].address,'/song/return');out=compileSong(s.project);assert.equal(exportOscScore(out).events.find(e=>e.address==='/song/return').seconds,0);
+assert.deepEqual(upgrade(JSON.parse(JSON.stringify(s.project))),s.project);const bad=structuredClone(s.project);bad.song.order[0].patternId='missing';assert.throws(()=>validate(bad));
+console.log('PASS song migration, shared repeats, independent clones, carried OFF, variable rows, retained pool, undo, cue reorder and timeline export');

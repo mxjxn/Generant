@@ -1,0 +1,3 @@
+export function cleanSettings(raw={}){
+ return{version:1,output:typeof raw.output==='string'?raw.output.slice(0,512):'',outputName:typeof raw.outputName==='string'?raw.outputName.slice(0,512):'',sampleRate:[44100,48000,96000].includes(raw.sampleRate)?raw.sampleRate:48000,latency:['interactive','balanced','playback'].includes(raw.latency)?raw.latency:'interactive',midiEnabled:raw.midiEnabled===true,inputs:Array.isArray(raw.inputs)?raw.inputs.filter(x=>typeof x?.id==='string'&&typeof x?.name==='string').slice(0,64).map(x=>({id:x.id.slice(0,512),name:x.name.slice(0,512)})):[],channel:Number.isInteger(raw.channel)&&raw.channel>=0&&raw.channel<=16?raw.channel:0};
+}

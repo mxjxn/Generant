@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';
+import {demoProject as newProject,Store,resize} from '../shared/model.mjs';
+import {addOscTrack,addOscEvent,oscEventsBetween,oscStateAt,exportOscScore,positionBeat,validateOscTracks} from '../shared/osc-score.mjs';
+const s=new Store(newProject());let id;s.edit(p=>{id=addOscTrack(p);addOscEvent(p,id);addOscEvent(p,id,{beat:4,address:'/song/part2'});addOscEvent(p,id,{beat:1,address:'/palette',kind:'state',args:['violet',2]});addOscEvent(p,id,{beat:0,address:'/scale',kind:'curve',args:[0],curve:'linear'});addOscEvent(p,id,{beat:4,address:'/scale',kind:'curve',args:[1],curve:'linear'});});
+let p=s.project;assert.equal(p.studio.devices.length,4);assert.deepEqual(oscEventsBetween(p,0,16).filter(e=>e.kind==='event').map(e=>[e.beat,e.address]),[[0,'/song/part1'],[4,'/song/part2'],[8,'/song/part1'],[12,'/song/part2']]);
+assert.equal(oscEventsBetween(p,0,4).filter(e=>e.kind==='event').length,1);assert.equal(oscEventsBetween(p,4,8).filter(e=>e.kind==='event').length,1);assert.equal(oscStateAt(p,2).find(e=>e[0]==='/scale')[1],.5);assert.ok(!oscStateAt(p,2).some(e=>e[0]==='/song/part1'));
+const score=exportOscScore(p,{loops:2});assert.equal(score.events.filter(e=>e.address==='/song/part1').length,2);assert.equal(score.events.find(e=>e.address==='/palette').args[0],'violet');
+const before=JSON.stringify(p);assert.throws(()=>s.edit(p=>addOscEvent(p,id,{address:'/rack/reset'})));assert.equal(JSON.stringify(s.project),before);assert.equal(positionBeat('2:3.5'),6.5);assert.throws(()=>positionBeat('1:5'));
+s.edit(p=>resize(p,1));assert.ok(s.project.studio.oscTracks[0].events.every(e=>e.beat<4));s.undo();assert.equal(JSON.stringify(s.project),before);validateOscTracks(JSON.parse(JSON.stringify(s.project)));console.log('PASS independent OSC tracks, loop/half-open scheduling, state seek, curves, typed export, validation, resize, undo');

@@ -1,0 +1,73 @@
+{
+  "name": "generant",
+  "productName": "Generant",
+  "version": "0.12.1",
+  "private": true,
+  "type": "module",
+  "main": "app/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev:web": "node app/server.mjs",
+    "compile": "sclang -D sc/compile.scd",
+    "test": "node --test tests/model.test.mjs tests/studio-model.test.mjs tests/tracker.test.mjs tests/fm.test.mjs tests/keyboard.test.mjs tests/wavetable.test.mjs tests/midi.test.mjs tests/osc-score.test.mjs tests/song.test.mjs tests/empty.test.mjs tests/presets.test.mjs tests/devices.test.mjs tests/kit.test.mjs",
+    "test:song": "node tests/song-desktop.mjs",
+    "test:osc": "node tests/osc-events-desktop.mjs",
+    "test:settings": "node tests/settings-ui.mjs",
+    "test:wavetable": "node tests/wavetable-ui.mjs",
+    "test:keyboard": "node tests/keyboard-ui.mjs",
+    "test:fm": "node tests/fm-ui.mjs",
+    "test:tracker": "node tests/tracker-ui.mjs",
+    "test:ui": "node tests/ui.mjs",
+    "dist:linux": "electron-builder --linux dir",
+    "dist:mac": "electron-builder --mac dir",
+    "test:workshop": "node tests/workshop.mjs",
+    "test:studio": "node tests/utility-rack.mjs",
+    "test:desktop": "node tests/studio-desktop.mjs",
+    "test:empty": "node tests/empty-desktop.mjs",
+    "test:presets": "node tests/presets-desktop.mjs",
+    "test:library": "node tests/library-desktop.mjs",
+    "test:kit": "node tests/kit-desktop.mjs",
+    "test:performance": "node tests/performance-desktop.mjs"
+  },
+  "dependencies": {
+    "supersonic-scsynth": "0.88.0",
+    "supersonic-scsynth-core": "0.88.0"
+  },
+  "devDependencies": {
+    "electron": "42.0.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "art.mxjxn.generant",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**",
+      "integrations/**",
+      "public/**",
+      "shared/**",
+      "sc/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/supersonic-scsynth-core/**"
+    ],
+    "linux": {
+      "category": "AudioVideo;Audio;"
+    },
+    "mac": {
+      "category": "public.app-category.music"
+    },
+    "extraResources": [
+      {
+        "from": "sample-library",
+        "to": "sample-library",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "description": "A local SuperSonic instrument workshop with a piano roll and Blender OSC output"
+}

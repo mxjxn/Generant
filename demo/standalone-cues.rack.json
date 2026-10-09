@@ -1,0 +1,597 @@
+{
+  "version": 2,
+  "name": "Standalone visual cues",
+  "bpm": 120,
+  "bars": 2,
+  "params": {
+    "osc": {
+      "value": 0
+    },
+    "keys": {
+      "fmMode": 0,
+      "transpose": 0,
+      "cutoff": 14000,
+      "resonance": 0,
+      "pitchAttack": 0.01,
+      "pitchDecay": 0.3,
+      "pitchAmount": 0,
+      "op1Ratio": 1,
+      "op1Fixed": 0,
+      "op1Hz": 220,
+      "op1Fine": 0,
+      "op1Pitch": 0,
+      "op1Level": 1,
+      "op1Index": 1,
+      "op1Attack": 0.005,
+      "op1Decay": 1,
+      "op1Sustain": 0.7,
+      "op1Release": 1,
+      "op1Velocity": 0.5,
+      "op1Pan": 0,
+      "op2Ratio": 2,
+      "op2Fixed": 0,
+      "op2Hz": 220,
+      "op2Fine": 0,
+      "op2Pitch": 0,
+      "op2Level": 0,
+      "op2Index": 1,
+      "op2Attack": 0.005,
+      "op2Decay": 1.5,
+      "op2Sustain": 0.1,
+      "op2Release": 1,
+      "op2Velocity": 0.5,
+      "op2Pan": 0,
+      "op3Ratio": 1,
+      "op3Fixed": 0,
+      "op3Hz": 220,
+      "op3Fine": 0,
+      "op3Pitch": 0,
+      "op3Level": 0,
+      "op3Index": 1,
+      "op3Attack": 0.005,
+      "op3Decay": 1,
+      "op3Sustain": 0.7,
+      "op3Release": 1,
+      "op3Velocity": 0.5,
+      "op3Pan": 0,
+      "op4Ratio": 1,
+      "op4Fixed": 0,
+      "op4Hz": 220,
+      "op4Fine": 0,
+      "op4Pitch": 0,
+      "op4Level": 0,
+      "op4Index": 1,
+      "op4Attack": 0.005,
+      "op4Decay": 1,
+      "op4Sustain": 0.7,
+      "op4Release": 1,
+      "op4Velocity": 0.5,
+      "op4Pan": 0,
+      "m11": 0,
+      "m12": 0,
+      "m13": 0,
+      "m14": 0,
+      "m21": 2,
+      "m22": 0,
+      "m23": 0,
+      "m24": 0,
+      "m31": 0,
+      "m32": 0,
+      "m33": 0,
+      "m34": 0,
+      "m41": 0,
+      "m42": 0,
+      "m43": 0,
+      "m44": 0,
+      "cv1Target": 0,
+      "cv1Source": 0,
+      "cv1Depth": 0,
+      "cv1Bipolar": 1,
+      "cv1Smooth": 0.02,
+      "cv2Target": 0,
+      "cv2Source": 0,
+      "cv2Depth": 0,
+      "cv2Bipolar": 1,
+      "cv2Smooth": 0.02,
+      "cv3Target": 0,
+      "cv3Source": 0,
+      "cv3Depth": 0,
+      "cv3Bipolar": 1,
+      "cv3Smooth": 0.02,
+      "cv4Target": 0,
+      "cv4Source": 0,
+      "cv4Depth": 0,
+      "cv4Bipolar": 1,
+      "cv4Smooth": 0.02,
+      "cv5Target": 0,
+      "cv5Source": 0,
+      "cv5Depth": 0,
+      "cv5Bipolar": 1,
+      "cv5Smooth": 0.02,
+      "cv6Target": 0,
+      "cv6Source": 0,
+      "cv6Depth": 0,
+      "cv6Bipolar": 1,
+      "cv6Smooth": 0.02,
+      "cv7Target": 0,
+      "cv7Source": 0,
+      "cv7Depth": 0,
+      "cv7Bipolar": 1,
+      "cv7Smooth": 0.02,
+      "cv8Target": 0,
+      "cv8Source": 0,
+      "cv8Depth": 0,
+      "cv8Bipolar": 1,
+      "cv8Smooth": 0.02,
+      "wavePosition": 0,
+      "waveDetune": 5,
+      "waveEnv": 0.4,
+      "waveDepth": 0,
+      "body": 0.48,
+      "metal": 0.32,
+      "attack": 0.008,
+      "decay": 0.8,
+      "sustain": 0.35,
+      "release": 0.2,
+      "modAttack": 1,
+      "modDecay": 2,
+      "modSustain": 0.5,
+      "modRelease": 3,
+      "envAmount": 0,
+      "envTarget": 0,
+      "width": 0.65,
+      "level": 0.22
+    },
+    "drums": {
+      "tone": 0.8,
+      "rate": 1,
+      "level": 0.48
+    },
+    "motion": {
+      "rate": 0.7
+    },
+    "shaper": {
+      "mode": 0,
+      "drive": 6,
+      "character": 0.15,
+      "tone": 9000,
+      "mix": 0.5,
+      "output": 0,
+      "bypass": 1,
+      "compensate": 1,
+      "bass": 1,
+      "target": 0
+    },
+    "master": {
+      "level": 0.7
+    }
+  },
+  "wave": 0,
+  "connections": [
+    {
+      "from": "keys.audio",
+      "to": "master.audio",
+      "amount": 1
+    },
+    {
+      "from": "drums.audio",
+      "to": "master.audio",
+      "amount": 1
+    },
+    {
+      "from": "motion.cv",
+      "to": "keys.tone",
+      "amount": 0.3
+    }
+  ],
+  "notes": [
+    {
+      "id": "n1",
+      "beat": 0,
+      "pitch": 48,
+      "duration": 1.25,
+      "velocity": 0.8
+    },
+    {
+      "id": "n2",
+      "beat": 0,
+      "pitch": 55,
+      "duration": 1.25,
+      "velocity": 0.65
+    },
+    {
+      "id": "n3",
+      "beat": 0,
+      "pitch": 62,
+      "duration": 1.25,
+      "velocity": 0.65
+    },
+    {
+      "id": "n4",
+      "beat": 1.5,
+      "pitch": 60,
+      "duration": 0.5,
+      "velocity": 0.6
+    },
+    {
+      "id": "n5",
+      "beat": 3,
+      "pitch": 63,
+      "duration": 0.5,
+      "velocity": 0.7
+    },
+    {
+      "id": "n6",
+      "beat": 4,
+      "pitch": 44,
+      "duration": 1.25,
+      "velocity": 0.8
+    },
+    {
+      "id": "n7",
+      "beat": 4,
+      "pitch": 51,
+      "duration": 1.25,
+      "velocity": 0.65
+    },
+    {
+      "id": "n8",
+      "beat": 4,
+      "pitch": 58,
+      "duration": 1.25,
+      "velocity": 0.65
+    },
+    {
+      "id": "n9",
+      "beat": 5.5,
+      "pitch": 60,
+      "duration": 0.5,
+      "velocity": 0.6
+    },
+    {
+      "id": "n10",
+      "beat": 7,
+      "pitch": 63,
+      "duration": 0.5,
+      "velocity": 0.7
+    }
+  ],
+  "drums": [
+    [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ],
+    [
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  ],
+  "pads": [
+    {
+      "level": 0,
+      "tune": 0,
+      "decay": 30,
+      "cutoff": 20000,
+      "drive": 0,
+      "start": 0,
+      "end": 1,
+      "mute": 0,
+      "solo": 0
+    },
+    {
+      "level": 0,
+      "tune": 0,
+      "decay": 30,
+      "cutoff": 20000,
+      "drive": 0,
+      "start": 0,
+      "end": 1,
+      "mute": 0,
+      "solo": 0
+    },
+    {
+      "level": 0,
+      "tune": 0,
+      "decay": 30,
+      "cutoff": 20000,
+      "drive": 0,
+      "start": 0,
+      "end": 1,
+      "mute": 0,
+      "solo": 0
+    },
+    {
+      "level": 0,
+      "tune": 0,
+      "decay": 30,
+      "cutoff": 20000,
+      "drive": 0,
+      "start": 0,
+      "end": 1,
+      "mute": 0,
+      "solo": 0
+    }
+  ],
+  "samples": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "studio": {
+    "devices": [
+      {
+        "id": "keys",
+        "type": "keys",
+        "name": "Glass Keys"
+      },
+      {
+        "id": "drums",
+        "type": "drums",
+        "name": "Tape Drums"
+      },
+      {
+        "id": "motion",
+        "type": "motion",
+        "name": "Motion"
+      },
+      {
+        "id": "shaper",
+        "type": "shaper",
+        "name": "Contour"
+      }
+    ],
+    "tracks": [
+      {
+        "id": "track-keys",
+        "deviceId": "keys",
+        "clipId": "clip-keys"
+      },
+      {
+        "id": "track-drums",
+        "deviceId": "drums",
+        "clipId": "clip-drums"
+      }
+    ],
+    "clips": [
+      {
+        "id": "clip-keys",
+        "kind": "notes"
+      },
+      {
+        "id": "clip-drums",
+        "kind": "drums"
+      }
+    ],
+    "channels": [
+      {
+        "id": "channel-keys",
+        "deviceId": "keys",
+        "level": 0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "insert": null
+      },
+      {
+        "id": "channel-drums",
+        "deviceId": "drums",
+        "level": 0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "insert": "shaper"
+      }
+    ],
+    "oscTracks": [
+      {
+        "id": "osc-track-ea252e1a-7fc9-469a-a963-0241f2cac988",
+        "name": "Scene cues",
+        "enabled": true,
+        "events": [
+          {
+            "id": "01965c8a-8779-4e65-ae7e-683076e5af08",
+            "beat": 0,
+            "kind": "event",
+            "address": "/song/part1",
+            "args": [],
+            "curve": "hold"
+          },
+          {
+            "id": "90d3d3b7-a2b7-4b36-b235-f7a52620cece",
+            "beat": 4,
+            "kind": "event",
+            "address": "/song/part2",
+            "args": [],
+            "curve": "hold"
+          },
+          {
+            "id": "e3ab58a7-3062-4051-a368-f1c5c4f53e8b",
+            "beat": 0,
+            "kind": "state",
+            "address": "/scene/palette",
+            "args": [
+              "violet"
+            ],
+            "curve": "hold"
+          },
+          {
+            "id": "90db9339-84fa-4b1a-afde-626d643a188e",
+            "beat": 4,
+            "kind": "state",
+            "address": "/scene/palette",
+            "args": [
+              "amber"
+            ],
+            "curve": "hold"
+          }
+        ]
+      },
+      {
+        "id": "osc-track-e18f084a-407b-499c-a283-872422653c93",
+        "name": "Asteroid scale",
+        "enabled": true,
+        "events": [
+          {
+            "id": "e3a268ec-f14e-46f2-8230-d70028ae451a",
+            "beat": 0,
+            "kind": "curve",
+            "address": "/asteroids/scale",
+            "args": [
+              0.3
+            ],
+            "curve": "smooth"
+          },
+          {
+            "id": "2691466b-749e-4f7c-9397-e3b05aa8416d",
+            "beat": 2,
+            "kind": "curve",
+            "address": "/asteroids/scale",
+            "args": [
+              1
+            ],
+            "curve": "smooth"
+          },
+          {
+            "id": "978f4b52-15f6-4241-94a9-0dd4f35272b7",
+            "beat": 4,
+            "kind": "curve",
+            "address": "/asteroids/scale",
+            "args": [
+              0.3
+            ],
+            "curve": "smooth"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+# Generant companion — OSC Score Bridge 1.2
+
+Bundled from the user's installed OSC Score Bridge 1.1 (mxjxn/osc-score-bridge), retaining its existing note/control mapping and performance-scene features. The canonical source is the standalone `mxjxn/osc-score-bridge` repository; this directory is a vendored release copy used to package Generant's companion add-on. Existing code retains its MIT license.
+
+Install `rack-osc-bridge.zip` through Blender Preferences → Add-ons → Install from Disk. In the OSC Bridge sidebar, enable Listen on port 57141. In Generant, add an OSC track from the Sequencer's left column. Preview OSC only, or enable Preview in Blender and use the main audio transport.
+
+Custom messages require no synth. `/song/part1` with no arguments increments an `osc:/song/part1` custom property on the **Rack OSC Score** Empty. Numeric or string arguments set the corresponding property; multiple arguments are stored as a JSON string. Very long OSC addresses use a stable SHA-256 property key to fit Blender's 63-byte limit. The sidebar displays the latest address; live event history remains in the existing Live panel. Reserved /rack, /companion and /transport messages remain bridge protocol messages.
+
+Under **Generant Cues**, add an address→camera route to switch cameras on a cue. Numeric messages also reach the existing control mapping system as `control./your/address`. No arbitrary Python is executed by OSC messages.
+
+**Import / bake Rack OSC score** accepts the JSON exported by Rack Studio. It starts at the scene's frame_start, respects fps/fps_base, and leaves the frame range unchanged. Events and state changes create `[Rack OSC]` timeline markers; camera routes bind cameras to those markers. Numeric state and sampled curves bake to custom-property keyframes on the Rack OSC Score Empty. Empty triggers become cumulative counters with constant interpolation. Drive your scene from this object for the same property source in live and baked use. Camera markers are rounded to frame boundaries; property keyframes retain fractional frames. Multiple triggers inside one rendered frame are represented by a counter jump.
+
+String/multi-argument states are stored in an embedded score Text and reconstructed on frame changes, including backward scrubbing. The add-on must remain enabled for these nonnumeric states. Numeric animation and camera markers are baked Blender data. Reimport replaces only this scene's Rack OSC Score object's animation and `[Rack OSC]` markers; user scene/object animation is retained. Use this Empty exclusively for OSC score output.
+
+Stop clears pending receiver messages and resets live cue values. UDP live preview is best-effort and runs on Blender's UI timer; use baked scores for final renders. These exports contain standalone OSC tracks; instrument-generated note/envelope messages and the older normalized OSC Control device are not yet included in this JSON export. Full audiovisual rendering/muxing and an agent MCP service remain separate milestones.

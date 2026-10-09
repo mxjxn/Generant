@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {MidiInput} from '../shared/midi.mjs';
+import {cleanSettings} from '../shared/settings.mjs';
+let count=0,route={id:'keys'},released=[],recorded=[];
+const m=new MidiInput({route:(_p,ch)=>ch===1?route:null,noteOn:()=>++count,noteOff:n=>released.push(n),record:n=>recorded.push(n)});
+m.receive('a',[0x90,60,100]);m.receive('b',[0x90,60,90]);route={id:'second'};
+m.receive('a',[0xB0,64,127]);m.receive('a',[0x90,60,0]);assert.equal(released.length,0);
+m.receive('b',[0x80,60,0]);assert.deepEqual(released,[2]);assert.equal(recorded[0].id,'keys');
+m.receive('a',[0xB0,64,0]);assert.deepEqual(released,[2,1]);
+m.receive('a',[0x91,62,100]);assert.equal(count,2);
+m.receive('a',[0x90,64,100]);m.receive('a',[0x90,64,100]);assert.deepEqual(released,[2,1,3]);
+m.receive('a',[0xB0,123,0]);assert.equal(m.notes.size,0);assert.equal(recorded.at(-1).id,'second');
+m.receive('a',[0x90,60,100]);m.receive('b',[0x90,62,100]);m.panic('a');assert.equal(m.notes.size,1);m.panic();assert.equal(m.notes.size,0);
+assert.equal(cleanSettings({sampleRate:-1,channel:18,latency:'invalid'}).sampleRate,48000);
+assert.equal(cleanSettings({channel:18}).channel,0);
+console.log('PASS MIDI note ownership, channel filter, velocity-zero, sustain, retrigger, per-port panic and settings validation');
