@@ -5,9 +5,28 @@
 // 16th). Transpose is the scale-locked CV lane value; held-transpose is a
 // later layer, this is a drag slider.
 import {validateBankDef,newBankLane} from '/shared/banks.mjs';
+// Shared lane-swap semantics (Banks tab + rack lane strip both use this):
+// pattern swaps queue to the next bar while playing, FIRE/immediate applies
+// now (the scheduler runs ~120 ms ahead, so a fire lands within a 16th).
+const queues={};   // laneId -> {patternId, timer, bar}
+export function laneSwap(store,engine,refresh,report){
+ function apply(laneId,patternId){
+  const q=queues[laneId];if(q){clearTimeout(q.timer);delete queues[laneId];}
+  try{store.edit(p=>{const l=p.banks?.lanes?.find(l=>l.id===laneId);if(!l)return;l.patternId=patternId;});}catch(e){report?.(e.message,true);}
+  refresh?.();
+ }
+ function queue(laneId,patternId){
+  const old=queues[laneId];if(old)clearTimeout(old.timer);
+  if(!engine.playing){apply(laneId,patternId);return;}
+  const bpm=store.project.bpm,beat=Math.max(0,engine.beat||0),bar=Math.floor(beat/4)+1,dt=(bar*4-beat)*60/bpm*1000;
+  queues[laneId]={patternId,bar,timer:setTimeout(()=>apply(laneId,patternId),dt)};
+  refresh?.();
+ }
+ return{apply,queue,queueOf:laneId=>queues[laneId],cancel:laneId=>{const q=queues[laneId];if(q){clearTimeout(q.timer);delete queues[laneId];}}};
+}
 export function bankUI(root,store,engine,report){
  const h=(tag,cls,html)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(html!=null)el.innerHTML=html;return el;};
- const queues={};   // laneId -> {patternId, timer, bar}
+ const swap=laneSwap(store,engine,()=>render(),report);
  root.id='bankRoot';
  root.innerHTML=`<div class="section-head"><div><span class="eyebrow">PATTERN BANKS</span><h1>Banks</h1></div>
   <span class="muted" style="font-size:10px;max-width:360px">ReBirth-style pattern banks per instrument. Load a bank JSON, attach a lane to a keys or clip device, perform: pattern clicks queue to the next bar while playing, FIRE applies within a 16th. Transpose follows the bank scale when scale-lock is on.</span></div>`;
@@ -36,18 +55,8 @@ export function bankUI(root,store,engine,report){
  file.onchange=()=>{if(file.files[0])loadFile(file.files[0]);file.value='';};
 
  function editLane(id,fn){try{store.edit(p=>{const l=p.banks?.lanes?.find(l=>l.id===id);if(!l)return;fn(l);});}catch(e){report(e.message,true);}}
- function applySwap(laneId,patternId){
-  const q=queues[laneId];if(q){clearTimeout(q.timer);delete queues[laneId];}
-  editLane(laneId,l=>{l.patternId=patternId;});
-  render();
- }
- function queueSwap(laneId,patternId){
-  const old=queues[laneId];if(old)clearTimeout(old.timer);
-  if(!engine.playing){applySwap(laneId,patternId);return;}
-  const bpm=project().bpm,beat=engine.beat,bar=Math.floor(beat/4)+1,dt=(bar*4-beat)*60/bpm*1000;
-  queues[laneId]={patternId,bar,timer:setTimeout(()=>applySwap(laneId,patternId),dt)};
-  render();
- }
+ const applySwap=(laneId,patternId)=>swap.apply(laneId,patternId);
+ const queueSwap=(laneId,patternId)=>swap.queue(laneId,patternId);
 
  function defRow(def){
   const d=h('div');d.style.cssText='border:1px solid #3a453e;border-radius:4px;padding:8px 10px;margin-bottom:6px;background:#1a201d';
@@ -59,7 +68,7 @@ export function bankUI(root,store,engine,report){
   const defs=project().banks?.defs??[];
   const def=defs.find(b=>b.id===lane.bankId);
   const card=h('div');card.style.cssText='border:1px solid #4a5b4e;border-radius:4px;padding:8px 10px;margin-bottom:8px;background:#171b1a';
-  const q=queues[lane.id];
+  const q=swap.queueOf(lane.id);
   card.innerHTML=`
    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <b style="min-width:90px">${devName(lane.deviceId)}</b>
@@ -80,8 +89,8 @@ export function bankUI(root,store,engine,report){
     <label>decay×<input type="number" data-k="decayMul" value="${lane.decayMul}" min="0" max="8" step="0.05" style="width:52px"></label>
     <label>release×<input type="number" data-k="releaseMul" value="${lane.releaseMul}" min="0" max="8" step="0.05" style="width:52px"></label>
    </div>`;
-  card.querySelector('[data-del]').onclick=()=>{try{store.edit(p=>{const i=p.banks.lanes.findIndex(l=>l.id===lane.id);if(i>=0)p.banks.lanes.splice(i,1);});const q=queues[lane.id];if(q){clearTimeout(q.timer);delete queues[lane.id];}render();}catch(e){report(e.message,true);}};
-  card.querySelector('[data-fire]').onclick=()=>{const q=queues[lane.id];if(!q){report('Nothing queued for this lane — change the pattern first.');return;}applySwap(lane.id,q.patternId);};
+  card.querySelector('[data-del]').onclick=()=>{try{store.edit(p=>{const i=p.banks.lanes.findIndex(l=>l.id===lane.id);if(i>=0)p.banks.lanes.splice(i,1);});swap.cancel(lane.id);render();}catch(e){report(e.message,true);}};
+  card.querySelector('[data-fire]').onclick=()=>{const q=swap.queueOf(lane.id);if(!q){report('Nothing queued for this lane — change the pattern first.');return;}applySwap(lane.id,q.patternId);};
   card.querySelectorAll('[data-k]').forEach(el=>{
    const k=el.dataset.k;
    const handler=()=>{
