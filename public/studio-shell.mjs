@@ -13,7 +13,7 @@ export function buildShell(){
  const front=$('#front'),back=$('#back');front.textContent='Front';back.textContent='Back';
  $('.rack-section').remove();$('#envelopes').remove();
  const seq=document.createElement('div');seq.id='sequencerPage';seq.append($('.editor-section'));space.prepend(seq);
- const intro=document.createElement('div');intro.className='sequence-toolbar';intro.innerHTML='<strong id="trackHeading"></strong><span id="clipLabel" hidden></span><button id="showTrackDevice">Device ↗</button><button id="showTrackChannel">Mixer ↗</button>';seq.prepend(intro);
+ const intro=document.createElement('div');intro.className='sequence-toolbar';intro.innerHTML='<strong id="trackHeading"></strong><span id="clipLabel" hidden></span><button id="showTrackDevice">Device ↗</button><button id="showTrackChannel">Mixer ↗</button><div id="trackBankStrip" style="margin-left:auto"></div>';seq.prepend(intro);
  $('.editor-tabs').innerHTML='<strong id="editorKind"></strong><select id="editorMode" aria-label="Sequence editor"><option value="tracker">Tracker</option></select>';
  const mixer=document.createElement('section');mixer.id='mixerPage';mixer.innerHTML='<div id="mixerChannels"></div>';space.insertBefore(mixer,$('footer'));
  const samples=document.createElement('section');samples.id='samplesPage';space.insertBefore(samples,$('footer'));

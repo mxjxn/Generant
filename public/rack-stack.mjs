@@ -1,6 +1,5 @@
 import {isEffect,chain} from '/shared/devices.mjs';
 import {patchStrip} from './fm-patches.mjs';
-import {bankStrip} from './bank-strip.mjs';
 import {fmTargets,fmLabels} from '/shared/fm.mjs';
 import {paramsOf} from '/shared/studio.mjs';
 import {workshop} from './workshop.mjs';
@@ -27,15 +26,14 @@ export function rackStack(root,store,engine,facade,report,withAudio,loadSample,a
  root.insertBefore(panel,bay);
  const host=panel.querySelector('.unit-front'),shadow=host.attachShadow({mode:'open'}),surface=document.createElement('div');surface.className='stack-workshop';shadow.append(surface);
  let patches=null;if(d.type==='keys'){const strip=document.createElement('div');host.before(strip);patches=patchStrip(strip,store,d.id,engine,report);}
- let bank=null;if(['keys','clip'].includes(d.type)){const el=document.createElement('div');host.before(el);bank=bankStrip(el,store,engine,d.id,report);}
  const ui=workshop(surface,scopedStore(store,()=>d.id),facade(()=>d.id),report,withAudio,pad=>loadSample(pad));ui.select(d.type);
  const style=document.createElement('link');style.rel='stylesheet';style.href='/style.css';shadow.prepend(style);
  panel.querySelector('.unit-name').onchange=e=>commit(p=>deviceOf(p,d.id).name=e.target.value.trim());
  panel.querySelector('.rack-unit-bar').addEventListener('pointerdown',()=>actions.focus(d.id));
  for(const action of ['track','channel','duplicate','remove'])panel.querySelector(`[data-action="${action}"]`)?.addEventListener('click',()=>actions[action](d.id));
  panel.querySelector('[data-action="collapse"]').onclick=e=>{const collapsed=e.target.getAttribute('aria-expanded')==='true';e.target.setAttribute('aria-expanded',!collapsed);e.target.textContent=collapsed?'+':'−';entry.collapsed=collapsed;update();};
- const entry={panel,ui,patches,bank,surface,collapsed:false};root.insertBefore(panel,bay);panels.set(d.id,entry);return entry;}
- function update(){const p=store.project;for(const [id,e]of panels)if(!deviceOf(p,id)){e.ui.dispose?.();e.panel.remove();panels.delete(id);}for(const d of p.studio.devices){const e=panels.get(d.id)??create(d),ch=channelOf(p,d.id);if(e.project!==p){e.ui.update();e.patches?.update();e.bank?.update();e.project=p;}e.panel.classList.toggle('selected',actions.selected()===d.id);e.panel.querySelector('.unit-name').value=d.name;e.panel.querySelector('[data-action="track"]').hidden=false;e.panel.querySelector('[data-action="channel"]').hidden=!ch;e.panel.querySelector('[data-action="remove"]').hidden=false;const bstrip=e.panel.querySelector('.bank-lane-strip');if(bstrip)bstrip.hidden=rear||e.collapsed||!(p.banks?.lanes??[]).some(l=>l.deviceId===d.id);
+ const entry={panel,ui,patches,surface,collapsed:false};root.insertBefore(panel,bay);panels.set(d.id,entry);return entry;}
+ function update(){const p=store.project;for(const [id,e]of panels)if(!deviceOf(p,id)){e.ui.dispose?.();e.panel.remove();panels.delete(id);}for(const d of p.studio.devices){const e=panels.get(d.id)??create(d),ch=channelOf(p,d.id);if(e.project!==p){e.ui.update();e.patches?.update();e.project=p;}e.panel.classList.toggle('selected',actions.selected()===d.id);e.panel.querySelector('.unit-name').value=d.name;e.panel.querySelector('[data-action="track"]').hidden=false;e.panel.querySelector('[data-action="channel"]').hidden=!ch;e.panel.querySelector('[data-action="remove"]').hidden=false;
  e.surface.querySelector('#fxTarget')?.closest('label').setAttribute('hidden','');
  const routing=e.panel.querySelector('.unit-routing');routing.innerHTML=ch?`<select aria-label="Audio Out"><option value="1">Out: ${escape(d.name)} → Mixer</option><option value="0">Out: disconnected</option></select>`:isEffect(d)?`<select aria-label="Insert channel"><option value="">Insert: unassigned</option>${p.studio.channels.map(c=>`<option value="${c.id}">Insert: ${escape(deviceOf(p,c.deviceId).name)}</option>`).join('')}</select>`:'';
  if(d.type==='osc'){routing.innerHTML='<label>OSC <input aria-label="OSC output name" maxlength="64" data-help="Named /rack/control output. Use the same control name in Blender. Values stay between 0 and 1."></label>';routing.querySelector('input').value=d.oscName;routing.querySelector('input').onchange=ev=>commit(p=>deviceOf(p,d.id).oscName=ev.target.value);}

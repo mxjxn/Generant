@@ -7,9 +7,11 @@
 import {laneSwap} from './bank-panel.mjs';
 export function bankStrip(root,store,engine,deviceId,report){
  root.className='bank-lane-strip';root.hidden=true;
+ const devOf=()=>typeof deviceId==='function'?deviceId():deviceId;
  const swap=laneSwap(store,engine,()=>update(),report);
  function update(){
-  const p=store.project,lanes=(p.banks?.lanes??[]).filter(l=>l.deviceId===deviceId);
+  const dId=devOf();
+  const p=store.project,lanes=dId?(p.banks?.lanes??[]).filter(l=>l.deviceId===dId):[];
   if(!lanes.length){root.hidden=true;root.innerHTML='';return;}
   root.innerHTML=lanes.map(lane=>{
    const def=(p.banks?.defs??[]).find(b=>b.id===lane.bankId);
