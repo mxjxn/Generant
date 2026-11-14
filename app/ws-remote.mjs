@@ -24,8 +24,8 @@ export class WsRemote{
      }
      else if(typeof msg?.address==='string'){
       const command=remoteCommand(msg.address,Array.isArray(msg.args)?msg.args:[]);
-      if(!command)this.safeSend(socket,{ok:false,error:'Unknown remote command.'});
-      else{this.onCommand({...command,at:msg.at??null});this.safeSend(socket,{ok:true});}
+      if(!command)this.safeSend(socket,{id:msg.id??null,ok:false,error:'Unknown remote command.'});
+      else{this.onCommand({...command,at:msg.at??null});this.safeSend(socket,{id:msg.id??null,ok:true});}
      }
      else this.safeSend(socket,{ok:false,error:'Send {address,args} or {query:"state"}.'});
     }catch(error){this.safeSend(socket,{ok:false,error:error.message});}
