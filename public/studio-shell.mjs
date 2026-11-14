@@ -5,7 +5,9 @@ export const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 export function buildShell(){
  const $=s=>document.querySelector(s),space=$('.workspace');
  $('.brand').remove();
- const nav=document.createElement('nav');nav.id='workspaceNav';nav.setAttribute('aria-label','Studio workspace');nav.innerHTML=['sequencer','rack','mixer','samples'].map(id=>`<button data-workspace="${id}">${id[0].toUpperCase()+id.slice(1)}</button>`).join('');$('header').prepend(nav);const settings=document.createElement('button');settings.id='hardwareButton';settings.textContent='Settings';settings.title='Audio / MIDI settings';$('header').append(settings);
+ const nav=document.createElement('nav');nav.id='workspaceNav';nav.setAttribute('aria-label','Studio workspace');nav.innerHTML=['sequencer','rack','mixer','samples','lab','timeline'].map(id=>`<button data-workspace="${id}">${id[0].toUpperCase()+id.slice(1)}</button>`).join('');$('header').prepend(nav);const settings=document.createElement('button');settings.id='hardwareButton';settings.textContent='Settings';settings.title='Audio / MIDI settings';$('header').append(settings);
+ const lab=document.createElement('div');lab.id='labPage';lab.hidden=true;lab.innerHTML='<div id="labRoot"></div>';space.prepend(lab);
+ const tl=document.createElement('div');tl.id='timelinePage';tl.hidden=true;tl.innerHTML='<div id="timelineRoot"></div>';space.prepend(tl);
  const rack=document.createElement('div');rack.id='rackPage';rack.innerHTML='<div id="rackStack"></div>';space.prepend(rack);
  const front=$('#front'),back=$('#back');front.textContent='Front';back.textContent='Back';
  $('.rack-section').remove();$('#envelopes').remove();
@@ -25,7 +27,7 @@ export function buildShell(){
  const projectName=$('#projectName');projectName.hidden=true;document.body.append(projectName);
  const path=document.createElement('small');path.id='projectPath';path.hidden=true;document.body.append(path);
  const aside=$('aside'),navList=$('#deviceNav'),bottom=$('.aside-bottom');aside.replaceChildren(bottom);
- const add=document.createElement('details');add.id='deviceActions';add.className='utility-menu';add.innerHTML=`<summary>Add Device…</summary><div class="menu-items"><small>Instruments</small><button data-add="keys">Four FM</button><button data-add="cloud">Granular Clouds</button><button data-add="vco">VCO</button><button data-add="kit">Drum Rack</button><button data-add="drums">Tape Drums</button><button data-add="wavetable">Envelope Wavetable…</button><small>Effects</small><button data-add="shaper">Contour</button>${Object.entries(extraSpecs).filter(([,s])=>s.kind==='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<small>Control</small>${Object.entries(extraSpecs).filter(([,s])=>s.kind!=='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<button data-add="motion">Motion</button><button data-add="osc">OSC Control</button></div>`;aside.append(add);
+ const add=document.createElement('details');add.id='deviceActions';add.className='utility-menu';add.innerHTML=`<summary>Add Device…</summary><div class="menu-items"><small>Instruments</small><button data-add="keys">Four FM</button><button data-add="cloud">Granular Clouds</button><button data-add="vco">VCO</button><button data-add="kit">Drum Rack</button><button data-add="clip">Clip Player</button><button data-add="drums">Tape Drums</button><button data-add="wavetable">Envelope Wavetable…</button><small>Effects</small><button data-add="shaper">Contour</button>${Object.entries(extraSpecs).filter(([,s])=>s.kind==='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<small>Control</small>${Object.entries(extraSpecs).filter(([,s])=>s.kind!=='Audio effect').map(([id,s])=>`<button data-add="${id}">${s.name}</button>`).join('')}<button data-add="motion">Motion</button><button data-add="osc">OSC Control</button></div>`;aside.append(add);
  const flip=document.createElement('div');flip.id='rackFlip';flip.className='segmented';flip.append(front,back);aside.append(flip,navList);
  const utilities=document.createElement('details');utilities.className='utility-menu';utilities.innerHTML='<summary>Audio / OSC</summary><div class="menu-items"></div>';utilities.querySelector('div').append($('#blender'),$('#bridgeState'),$('#enable'));aside.append(utilities);
  const output=document.createElement('div');output.id='compactOutput';output.append($('#meterFill').parentElement,$('#peak'));$('.transport').append(output);
@@ -33,7 +35,7 @@ export function buildShell(){
  bottom.hidden=true;aside.append(bottom);
  const browserTitle=document.createElement('span');browserTitle.id='browserTitle';browserTitle.hidden=true;aside.append(browserTitle);
  $('footer>span:last-child').hidden=true;$('#message').textContent='Ready';
- return{seq,rack,mixer,samples,code};
+ return{seq,rack,mixer,samples,lab,timeline:tl,code};
 }
 export function mixerPanel(root,store,engine,report,onDevice,onChannel){
  const controls=new Controls(store,engine,report);let shape='';

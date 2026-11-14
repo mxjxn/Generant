@@ -7,7 +7,7 @@ const mime={'.html':'text/html','.mjs':'text/javascript','.js':'text/javascript'
 export async function serve(port=0){
  const server=http.createServer(async(req,res)=>{
   res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','require-corp');res.setHeader('Cross-Origin-Resource-Policy','same-origin');
-  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' data: blob:; img-src 'self' data:; media-src 'self' blob: data:");
+  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self' http://127.0.0.1:8765 data: blob:; img-src 'self' data:; media-src 'self' blob: data:");
   try{const url=decodeURIComponent(new URL(req.url,'http://localhost').pathname);let base=path.join(root,'public'),rel=url==='/'?'index.html':url.slice(1);
    for(const [prefix,dir]of [['/vendor/sonic/','node_modules/supersonic-scsynth/dist'],['/vendor/core/','node_modules/supersonic-scsynth-core'],['/shared/','shared']])if(url.startsWith(prefix)){base=path.join(root,dir);rel=url.slice(prefix.length);break;}
    if(url.startsWith('/library/')){base=process.resourcesPath?path.join(process.resourcesPath,'sample-library'):path.join(root,'sample-library');if(!await fs.stat(base).catch(()=>null))base=path.join(root,'sample-library');rel=url.slice('/library/'.length);}

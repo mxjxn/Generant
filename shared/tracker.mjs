@@ -40,7 +40,7 @@ export function clearCell(p,id,beat,kind,column){
  const type=deviceOf(p,id)?.type;
  if(kind==='fx'){if(sequence(p,id).fx.some(f=>f.beat===beat&&f.column===column))editFx(p,id,beat,column,'');return;}
  if(type==='drums'){const index=beat*4;if(!Number.isInteger(index)||index>=p.bars*16)return;if(kind==='note')p.drums[column][index]=false;if(p.studio.sequences?.[id])delete p.studio.sequences[id].velocities[column+':'+index];return;}
- if(!['keys','kit'].includes(type))return;
+ if(!['keys','kit','clip'].includes(type))return;
  if(kind==='note')editNoteCell(p,id,beat,column,'');
  else {const n=columnNotes(p,id).find(n=>n.column===column&&n.beat===beat);if(n)notesOf(p,id).find(x=>x.id===n.id).velocity=.75;}
 }

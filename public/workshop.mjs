@@ -1,4 +1,5 @@
 import {kitPanel} from './kit-panel.mjs';
+import {clipPanel} from './clip-panel.mjs';
 import {devicePanel} from './device-panel.mjs';
 import {extraSpecs} from '/shared/devices.mjs';
 import {wavePanel} from './wave-panel.mjs';
@@ -26,6 +27,7 @@ export function workshop(root,store,engine,report,withAudio,loadSample){
  for(const [k,name]of [['body','Body'],['metal','FM amount'],['width','Stereo width'],['level','Instrument level']])knobs[k]=k==='level'?controls.add(sound,{name,min:-60,max:20*Math.log10(.6),initial:20*Math.log10(.22),format:units.db,get:p=>Math.max(-60,20*Math.log10(p.params.keys.level)),set:(p,v)=>p.params.keys.level=10**(v/20)}):parameter(controls,sound,'keys',k,specs.keys.params[k],{name,format:units.percent});
  const e=document.createElement('div');body.append(e);env=envelopes(e,store,engine,controls);}
  }else if(device==='kit'){fm=kitPanel(body,store,engine,report,withAudio);
+ }else if(device==='clip'){tools.innerHTML='<button id="clipAuditionAll">▶ Audition C2 / C4</button>';root.querySelector('#clipAuditionAll').onclick=()=>{withAudio(async()=>{if(!engine.ready)await engine.boot(store.project);await engine.sonic.audioContext.resume();engine.previewDevice(store.project.studio.devices.find(x=>x.id===engine.deviceId)?.id,36,.9);setTimeout(()=>engine.previewDevice(engine.deviceId,60,.9),350);});};fm=clipPanel(body,store,engine,report,withAudio);
  }else if(extraSpecs[device]){fm=devicePanel(body,store,engine,report,device,withAudio);
  }else if(device==='drums'){
  tools.innerHTML='<button id="auditionPad">▶ Audition pad</button><button id="loadPad">Load sample…</button>';
