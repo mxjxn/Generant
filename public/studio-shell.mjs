@@ -5,8 +5,9 @@ export const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 export function buildShell(){
  const $=s=>document.querySelector(s),space=$('.workspace');
  $('.brand').remove();
- const nav=document.createElement('nav');nav.id='workspaceNav';nav.setAttribute('aria-label','Studio workspace');nav.innerHTML=['sequencer','rack','mixer','samples','lab','timeline'].map(id=>`<button data-workspace="${id}">${id[0].toUpperCase()+id.slice(1)}</button>`).join('');$('header').prepend(nav);const settings=document.createElement('button');settings.id='hardwareButton';settings.textContent='Settings';settings.title='Audio / MIDI settings';$('header').append(settings);
+ const nav=document.createElement('nav');nav.id='workspaceNav';nav.setAttribute('aria-label','Studio workspace');nav.innerHTML=['sequencer','rack','mixer','samples','lab','timeline','banks'].map(id=>`<button data-workspace="${id}">${id[0].toUpperCase()+id.slice(1)}</button>`).join('');$('header').prepend(nav);const settings=document.createElement('button');settings.id='hardwareButton';settings.textContent='Settings';settings.title='Audio / MIDI settings';$('header').append(settings);
  const lab=document.createElement('div');lab.id='labPage';lab.hidden=true;lab.innerHTML='<div id="labRoot"></div>';space.prepend(lab);
+ const banks=document.createElement('div');banks.id='banksPage';banks.hidden=true;banks.innerHTML='<div id="bankRoot"></div>';space.prepend(banks);
  const tl=document.createElement('div');tl.id='timelinePage';tl.hidden=true;tl.innerHTML='<div id="timelineRoot"></div>';space.prepend(tl);
  const rack=document.createElement('div');rack.id='rackPage';rack.innerHTML='<div id="rackStack"></div>';space.prepend(rack);
  const front=$('#front'),back=$('#back');front.textContent='Front';back.textContent='Back';
@@ -35,7 +36,7 @@ export function buildShell(){
  bottom.hidden=true;aside.append(bottom);
  const browserTitle=document.createElement('span');browserTitle.id='browserTitle';browserTitle.hidden=true;aside.append(browserTitle);
  $('footer>span:last-child').hidden=true;$('#message').textContent='Ready';
- return{seq,rack,mixer,samples,lab,timeline:tl,code};
+ return{seq,rack,mixer,samples,lab,banks,timeline:tl,code};
 }
 export function mixerPanel(root,store,engine,report,onDevice,onChannel){
  const controls=new Controls(store,engine,report);let shape='';
