@@ -2,6 +2,7 @@
   "name": "generant",
   "productName": "Generant",
   "version": "0.12.1",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "main": "app/main.cjs",
