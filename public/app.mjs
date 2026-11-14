@@ -122,6 +122,12 @@ signature=JSON.stringify(store.project.studio.devices.map(d=>[d.id,d.type,d.grai
 const hardware=await hardwareSettings({engine,store,grid,getDevice:()=>workspace==='sequencer'&&selectedOsc?null:workspace==='rack'?selectedDevice:track().deviceId,getTrack:()=>track().deviceId,report:message,audioAction});
 $('#hardwareButton').onclick=()=>hardware.open();
 window.rack={presets:{schedule:(deviceId,beat,slot,column=0)=>store.edit(p=>editFx(p,deviceId,beat,column,'PR '+slot.toString(16).padStart(2,'0'))),store:(deviceId,slot,name)=>{let id;store.edit(p=>id=storePreset(p,deviceId,slot,name));return id;},recall:(deviceId,presetId)=>store.edit(p=>recallPreset(p,deviceId,presetId)),recallProgram:(deviceId,slot)=>{const preset=programPreset(store.project,deviceId,slot);if(!preset)throw Error('Empty program slot');store.edit(p=>recallPreset(p,deviceId,preset.id));}},song,osc,hardware,store,engine,roll,stack,grid,samples,get instrument(){return stack.get(selectedDevice);},loadProject,showDevice,showChannel,selectTrack,changeWorkspace,get workspace(){return workspace;},get selection(){return{selectedDevice,selectedTrack,selectedChannel,selectedOsc};}};
+function remoteState(){const p=store.project;
+ return {playing:engine.playing,bpm:p.bpm,pattern:p.song?.editPatternId,
+  devices:p.studio.devices.map(d=>({id:d.id,type:d.type,name:d.name,params:d.params??{}})),
+  patterns:(p.song?.patterns??[]).map(x=>({id:x.id,name:x.name,rows:x.rows,lpb:x.lpb})),
+  banks:{defs:(p.banks?.defs??[]).map(def=>({id:def.id,name:def.name,instrument:def.instrument,key:def.key,scale:def.scale,patterns:def.patterns.map(x=>({id:x.id,name:x.name}))})),lanes:p.banks?.lanes??[]}};}
+window.desktop?.onRemoteStateQuery(id=>{try{window.desktop.respondState(id,remoteState());}catch(e){window.desktop.respondState(id,{error:e.message});}});
 // Ask about recovery before publishing a default snapshot, so a new launch cannot overwrite it.
 if(window.desktop){try{const recovered=await window.desktop.recover();if(recovered)await loadProject(JSON.parse(recovered));else await loadProject(await getDefault(),{saved:true,file:null});}catch(e){message('Recovery: '+e.message,true);}}
 oscSignature=JSON.stringify(store.project.studio.oscTracks??[]);update();animate();window.rack.ready=true;
