@@ -71,6 +71,24 @@ body:has(#contextHelp:not([hidden])) .tracker-scroll{height:calc(100vh - 338px)}
 #hardwareSettings .midi-port{padding:5px 8px;background:#242d2e}
 #hardwareSettings .midi-port small{margin-left:auto;color:#9faeac}
 #hardwareSettings [data-status]{min-height:18px;font-size:12px}
+#renderShareDialog{width:min(560px,94vw);max-height:90vh;overflow:auto;background:#1b2022;color:#dbe2df;border:1px solid #526060;border-radius:6px;padding:18px}
+#renderShareDialog::backdrop{background:#0009}
+#renderShareDialog .settings-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+#renderShareDialog .render-form{display:grid;gap:10px}
+#renderShareDialog label{display:flex;flex-direction:column;gap:4px;font-size:12px}
+#renderShareDialog label:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:8px}
+#renderShareDialog .render-actions{display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap}
+#renderShareDialog .render-cover-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#renderShareDialog .render-queue{margin-top:16px;border-top:1px solid #394544;padding-top:12px}
+#renderShareDialog .render-queue-list{display:grid;gap:8px;margin-top:8px;max-height:280px;overflow:auto}
+#renderShareDialog .render-job{background:#15191a;border:1px solid #334040;border-radius:4px;padding:8px 10px}
+#renderShareDialog .render-job header{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px}
+#renderShareDialog .render-job .badge{text-transform:uppercase;letter-spacing:.04em;color:#c9d7be}
+#renderShareDialog .render-job-title{font-size:12px;margin:4px 0}
+#renderShareDialog .render-job-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
+#renderShareDialog .render-job progress{width:100%;height:6px;margin-top:6px}
+#renderShareDialog progress{flex:1;height:8px}
+#renderShareDialog .muted{font-size:12px;color:#9faeac;margin:0}
 .osc-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0}.osc-tools label{display:flex;align-items:center;gap:6px;font-size:12px}.osc-tools input[data-osc-start]{width:80px}.osc-tools input[data-osc-loops]{width:60px}.osc-hint{font-size:12px;color:#9faeac;line-height:1.5}.osc-events{width:100%;border-collapse:collapse}.osc-events th{text-align:left;font-size:12px;color:#9faeac;padding:6px}.osc-events td{padding:3px}.osc-events input{width:100%;min-width:60px}.osc-events td:first-child{width:90px}.osc-events [data-field=address]{min-width:150px}.osc-events [aria-invalid=true]{border-color:#e57d73}#oscEditor [data-osc-status]{display:block;margin-top:12px;font:12px monospace}
 #songSequencer{border-bottom:1px solid #394544;margin-bottom:10px}.song-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:6px 0}.song-toolbar label{display:flex;align-items:center;gap:5px;font-size:12px}.song-toolbar output{margin-left:auto;font:12px monospace;color:#c9d7be}.song-toolbar input[type=number]{width:75px}.song-matrix-scroll{max-height:240px;overflow:auto}.song-matrix{border-collapse:collapse;min-width:100%;font-size:12px}.song-matrix th{text-align:left;white-space:nowrap;padding:4px 6px;position:sticky;top:0;background:#1b2022}.song-matrix td{padding:3px;border-bottom:1px solid #293332}.song-matrix input{width:120px}.song-matrix td:first-child{white-space:nowrap}.song-matrix td:first-child button{padding:4px 6px}.song-matrix [data-block]{min-width:68px;width:100%;padding:5px}.song-matrix .filled{background:#35483f;color:#c8dfbc}.song-matrix .editing td{border-bottom:1px solid #c39264}.song-matrix .playing td:first-child{background:#496747}.song-matrix .queued td:first-child{outline:1px solid #bda370}.song-cues{font-size:12px;margin:7px 0}.song-cues input[data-cue-field=beat]{width:75px}.song-cues small{display:block;color:#9faeac;margin:5px 0}
 #songSequencer button,#songSequencer select,#songSequencer input{font-size:12px;padding:4px 6px;min-height:27px}#songSequencer .song-toolbar{margin:5px 0}#songSequencer [data-pattern-name]{width:180px}#songSequencer [data-song-status]{font-size:11px}.song-matrix [data-block]{min-width:58px}

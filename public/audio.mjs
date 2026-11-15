@@ -7,6 +7,7 @@ import {synthName,synthParams} from '/shared/fm.mjs';
 import {effectiveParams} from '/shared/tracker.mjs';
 import {drumParams,padOn,specs} from '/shared/model.mjs';
 import {engineLayout,paramsOf,channelOn,deviceOf} from '/shared/studio.mjs';
+import {buildRenderTimeline,encodePcm16Wav,normalizeStereo,parseRenderOptions,resolvePatternId} from '/shared/render.mjs';
 import {SuperSonic} from '/vendor/sonic/supersonic.js';
 export function monoWav(samples,rate=44100){const b=new ArrayBuffer(44+samples.length*4),v=new DataView(b);const str=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt()));str(0,'RIFF');v.setUint32(4,b.byteLength-8,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,3,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*4,true);v.setUint16(32,4,true);v.setUint16(34,32,true);str(36,'data');v.setUint32(40,samples.length*4,true);samples.forEach((x,i)=>v.setFloat32(44+i*4,Number.isFinite(x)?Math.max(-1,Math.min(1,x)):0,true));return b;}
 function demo(pad){const rate=44100,n=Math.floor(rate*[.5,.24,.085,.32][pad]),a=new Float32Array(n);let phase=0,seed=12345;for(let i=0;i<n;i++){const t=i/rate;seed=(seed*1664525+1013904223)>>>0;const noise=(seed/4294967296)*2-1;phase+=2*Math.PI*(48+115*Math.exp(-t*65))/rate;a[i]=pad===0?Math.sin(phase)*Math.exp(-t*12)*.8:pad===1?(noise*.65+Math.sin(t*2*Math.PI*180)*.25)*Math.exp(-t*20):pad===2?(noise-Math.sin(t*2*Math.PI*8400)*.2)*Math.exp(-t*80)*.3:noise*Math.exp(-t*15)*.35;}return monoWav(a);}
@@ -90,6 +91,70 @@ export class Engine{
  keyboardNoteOff(id){this.releaseGate(id);if(this.keyboardNodes?.delete(id)&&this.ready&&!this.stopping)this.sonic.send('/n_set',id,'gate',0);}
  get absoluteBeat(){if(this.playing&&!this.visualOnly)this.applyTransition();if(this.visualOnly)return this.visualOffset+Math.max(0,performance.now()/1000-this.visualOrigin)*this.project.bpm/60;return this.ready?Math.max(0,(this.sonic.clock.now()-this.origin)*this.project.bpm/60)||0:0;}
  get beat(){const pos=this.playbackPosition;return pos?pos.beat-pos.start:0;}
+ /** Realtime stereo bounce through SuperSonic. Offline AudioContext is unavailable for WASM scsynth. */
+ async render(project,rawOptions={},onProgress=()=>{}){
+  if(this.rendering)throw Error('A render is already in progress.');
+  const options=parseRenderOptions(rawOptions);
+  const patternId=resolvePatternId(project,options);
+  const timeline=buildRenderTimeline(project,{...options,patternId});
+  if(options.maxSeconds&&timeline.durationSeconds>options.maxSeconds)timeline.durationSeconds=options.maxSeconds;
+  const duration=timeline.durationSeconds+options.tail;
+  if(duration>600)throw Error('Render exceeds 10 minutes; pass maxSeconds or shorten the song.');
+  this.rendering=true;
+  const previous={...this.playbackOptions};
+  const chunksL=[],chunksR=[];
+  let capture=null,dest=null;
+  try{
+   if(this.playing||this.visualOnly)await this.stop();
+   if(!this.ready)await this.boot(project);
+   await this.sonic.audioContext.resume();
+   if(!this.captureReady){await this.sonic.audioContext.audioWorklet.addModule('/capture-processor.js');this.captureReady=true;}
+   capture=new AudioWorkletNode(this.sonic.audioContext,'render-capture',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+   dest=this.sonic.audioContext.createMediaStreamDestination();
+   this.guard.connect(capture);capture.connect(dest);
+   capture.port.onmessage=({data})=>{
+    if(data?.type!=='pcm'||!data.channels?.[0])return;
+    chunksL.push(data.channels[0]);
+    chunksR.push(data.channels[1]||data.channels[0]);
+   };
+   this.playbackOptions={mode:options.mode,loop:false,patternId:options.mode==='pattern'?patternId:undefined};
+   onProgress(0.02,'Starting bounce…');
+   const previousEnded=this.onEnded;
+   try{
+    const ended=new Promise(resolve=>{this.onEnded=()=>resolve('ended');});
+    capture.port.postMessage({type:'start'});
+    await this.play(project);
+    const progressTimer=setInterval(()=>{
+     const t=Math.min(1,this.absoluteBeat/(timeline.totalBeats||1));
+     onProgress(0.05+t*0.7,`Bouncing ${Math.round(t*100)}%`);
+    },200);
+    const result=await Promise.race([ended,new Promise((_,rej)=>setTimeout(()=>rej(Error('Render timed out.')),(duration+8)*1000))]);
+    clearInterval(progressTimer);
+    onProgress(0.78,'Capturing release tail…');
+    await new Promise(r=>setTimeout(r,Math.max(50,options.tail*1000)));
+    capture.port.postMessage({type:'stop'});
+    await this.stop();
+    const sampleRate=this.sonic.audioContext.sampleRate;
+    const frames=chunksL.reduce((n,c)=>n+c.length,0);
+    const left=new Float32Array(frames),right=new Float32Array(frames);
+    let o=0;for(let i=0;i<chunksL.length;i++){left.set(chunksL[i],o);right.set(chunksR[i],o);o+=chunksL[i].length;}
+    const targetFrames=Math.min(frames,Math.floor(duration*sampleRate));
+    const L=left.subarray(0,targetFrames),R=right.subarray(0,targetFrames);
+    const mixed=options.normalize?normalizeStereo(L,R):{left:L,right:R,gain:1,peak:0};
+    onProgress(0.9,'Encoding WAV…');
+    const wav=encodePcm16Wav(mixed.left,mixed.right,sampleRate);
+    timeline.sampleRate=sampleRate;
+    timeline.render={engine:'supersonic-realtime',result,peak:mixed.peak,gain:mixed.gain,frames:targetFrames};
+    onProgress(1,'Audio render complete');
+    return {wav,timeline,sampleRate,left:mixed.left,right:mixed.right,duration:targetFrames/sampleRate};
+   }finally{this.onEnded=previousEnded;}
+  }finally{
+   try{capture?.port.postMessage({type:'stop'});}catch{}
+   try{this.guard?.disconnect(capture);}catch{}
+   try{capture?.disconnect();}catch{}
+   this.playbackOptions=previous;this.rendering=false;
+  }
+ }
  async destroy(){clearInterval(this.cvTimer);await this.stop();this.worker?.terminate();this.ready=false;if(this.sonic?.audioContext)this.sonic.audioContext.onstatechange=null;await this.sonic?.destroy();this.sonic=null;this.worker=null;this.guard=null;this.sampleKeys=[];this.waveKey=null;this.buffers=[0,1,2,3];this.nextBuffer=10;this.peak=0;this.globalKey=null;this.graphKey=null;this.fxNodes=[];this.grainKeys={};this.kitKey=null;this.kitBuffers={};this.kitGroups=[];this.kitWaves={};this.clipKey=null;this.clipBuffers={};this.clipWaves={};this.clipDurations={};}
 }
 

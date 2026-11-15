@@ -8,7 +8,10 @@ else {
 }
 let server,win,osc,remote,wsRemote,projectPath=null,snapshot=null,dirty=false,closing=false,allowClose=false,recoveryTimer,recoveryQueue=Promise.resolve();
 const statePending=new Map();let stateQueryId=0;
+const jobPending=new Map();let jobQueryId=0;
 ipcMain.on('remote-state-response',(_e,payload)=>{const {id,state}=payload??{};const resolve=statePending.get(id);if(resolve){statePending.delete(id);resolve(state);}});
+ipcMain.on('remote-job-response',(_e,payload)=>{const {id,ok,result,error}=payload??{};const pending=jobPending.get(id);if(!pending)return;jobPending.delete(id);if(ok)pending.resolve(result);else pending.reject(Error(error||'Remote job failed'));});
+ipcMain.on('remote-job-progress',(_e,payload)=>{const {id,progress,message}=payload??{};const pending=jobPending.get(id);pending?.progress?.(progress,message);});
 const locked=app.requestSingleInstanceLock();
 if(!locked)app.quit();
 else {
@@ -36,10 +39,28 @@ else {
   ipcMain.handle('osc-enable',(_e,value)=>osc.enable(value));ipcMain.handle('osc-reset',()=>osc.reset());ipcMain.on('osc-send',(_e,batch)=>{try{osc.send(batch);}catch(e){console.error(e.message);}});
   server=await(await import('./server.mjs')).serve();
   win=new BrowserWindow({width:1450,height:960,minWidth:850,minHeight:650,backgroundColor:'#151819',title:'Generant',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
-  remote=new(await import('./remote.mjs')).GenerantRemote(Number(process.env.GENERANT_OSC_PORT)||57142,command=>win?.webContents.send('remote-command',command),error=>win?.webContents.send('project-error','OSC input: '+error.message));
+  const jobTypes=new Set(['render','renderQueueAdd','renderQueueList','renderQueueCancel','renderQueueClear']);
+  const dispatchRemote=command=>{
+   if(jobTypes.has(command.type)){
+    const id='job'+(++jobQueryId);
+    const timeoutMs=command.type==='render'?Math.max(180000,((command.maxSeconds||180)+30)*1000):15000;
+    return new Promise((resolve,reject)=>{
+     if(!win)return reject(Error('No window.'));
+     const timer=setTimeout(()=>{if(jobPending.has(id)){jobPending.delete(id);reject(Error('Remote job timed out.'));}},timeoutMs);
+     jobPending.set(id,{
+      resolve:value=>{clearTimeout(timer);resolve(value);},
+      reject:error=>{clearTimeout(timer);reject(error);},
+      progress:command.progress
+     });
+     win.webContents.send('remote-command',{...command,requestId:id});
+    });
+   }
+   win?.webContents.send('remote-command',command);
+  };
+  remote=new(await import('./remote.mjs')).GenerantRemote(Number(process.env.GENERANT_OSC_PORT)||57142,command=>{dispatchRemote(command);},error=>win?.webContents.send('project-error','OSC input: '+error.message));
   await remote.open().catch(error=>win?.webContents.send('project-error','OSC input unavailable: '+error.message));
   const wsStateQuery=id=>new Promise((resolve,reject)=>{if(!win){reject(Error('No window.'));return;}const timer=setTimeout(()=>{if(statePending.has(id)){statePending.delete(id);reject(Error('Renderer state timed out.'));}},2000);statePending.set(id,state=>{clearTimeout(timer);resolve(state);});win.webContents.send('remote-state-query',id);});
-  wsRemote=new(await import('./ws-remote.mjs')).WsRemote(Number(process.env.GENERANT_WS_PORT)||57143,command=>win?.webContents.send('remote-command',command),error=>win?.webContents.send('project-error','WS remote: '+error.message),()=>wsStateQuery('q'+(++stateQueryId)));
+  wsRemote=new(await import('./ws-remote.mjs')).WsRemote(Number(process.env.GENERANT_WS_PORT)||57143,command=>dispatchRemote(command),error=>win?.webContents.send('project-error','WS remote: '+error.message),()=>wsStateQuery('q'+(++stateQueryId)));
   await wsRemote.open().catch(error=>win?.webContents.send('project-error','WS remote unavailable: '+error.message));
   const origin=`http://127.0.0.1:${server.address().port}`;
   const allowed=(contents,permission,url,details={})=>contents===win.webContents&&url?.startsWith(origin+'/')&&(['midi','midiSysex','speaker-selection'].includes(permission)||permission==='media'&&(details.mediaTypes??[details.mediaType]).every(t=>t==='audio'));
@@ -49,6 +70,22 @@ else {
   ipcMain.on('project-state',(_e,state)=>{if(typeof state?.text!=='string'||state.text.length>110000000)return;snapshot=state.text;dirty=!!state.dirty;clearTimeout(recoveryTimer);recoveryTimer=setTimeout(queueRecovery,1500);});
   ipcMain.handle('export-osc-score',async(_e,text)=>{if(typeof text!=='string'||text.length>100000000)throw Error('OSC score too large.');const score=JSON.parse(text);if(score.format!=='rack-osc-score'||score.version!==1||!Array.isArray(score.events))throw Error('Invalid OSC score');const choice=await dialog.showSaveDialog(win,{defaultPath:'visuals.osc-score.json',filters:[{name:'OSC score',extensions:['json']}]});if(choice.canceled)return null;await writeAtomic(choice.filePath,text);return choice.filePath;});
   ipcMain.handle('export-blender-bridge',async()=>{const choice=await dialog.showSaveDialog(win,{defaultPath:'rack-osc-bridge.zip',filters:[{name:'Blender add-on',extensions:['zip']}]});if(choice.canceled)return null;await fs.copyFile(path.join(__dirname,'../integrations/rack-osc-bridge.zip'),choice.filePath);return choice.filePath;});
+  ipcMain.handle('ffmpeg-probe',async()=>(await import('./ffmpeg.mjs')).probeFfmpeg());
+  ipcMain.handle('export-render',async(_e,payload)=>{
+   const {saveRenderBundle}=await import('./render-export.mjs');
+   return saveRenderBundle(win,payload,msg=>win?.webContents.send('render-progress',msg));
+  });
+  ipcMain.handle('export-render-to',async(_e,payload)=>{
+   const {writeRenderBundle}=await import('./render-export.mjs');
+   return writeRenderBundle(payload,msg=>win?.webContents.send('render-progress',msg));
+  });
+  ipcMain.handle('pick-render-folder',async()=>(await import('./render-export.mjs')).pickRenderFolder(win));
+  ipcMain.handle('pick-cover-image',async()=>(await import('./render-export.mjs')).pickCoverImage(win));
+  ipcMain.handle('reveal-path',async(_e,target)=>(await import('./render-export.mjs')).revealPath(target));
+  ipcMain.on('render-event',(_e,payload)=>{
+   // Fan out queue progress/completion to all WS clients (Telegram agents, etc.).
+   wsRemote?.broadcast?.({event:'render/'+(payload?.event||'update'),...payload});
+  });
   ipcMain.handle('save-project',(_e,text,saveAs)=>save(text,saveAs));
   ipcMain.handle('load-project',async()=>{const choice=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'Rack project',extensions:['json']}]});if(choice.canceled)return null;const file=choice.filePaths[0];if((await fs.stat(file)).size>110000000)throw Error('Project too large');return{text:await fs.readFile(file,'utf8'),path:file};});
   ipcMain.on('project-opened',(_e,file)=>{projectPath=file;});
@@ -59,7 +96,16 @@ else {
     clearTimeout(recoveryTimer);await recoveryQueue.catch(()=>{});await fs.rm(recoveryPath,{force:true});remote?.close();wsRemote?.close();osc?.close();allowClose=true;win.close();
    }catch(error){await dialog.showMessageBox(win,{type:'error',message:'The project could not be closed safely.',detail:error.message});}finally{closing=false;}})();
   });
-  Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'Generant',submenu:[{role:'about'},{type:'separator'},{role:'quit'}]},{label:'Edit',submenu:[{label:'Undo',accelerator:'CmdOrCtrl+Z',click:()=>win.webContents.send('project-command','undo')},{label:'Redo',accelerator:'CmdOrCtrl+Shift+Z',click:()=>win.webContents.send('project-command','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'View',submenu:[{role:'toggleDevTools'},{role:'togglefullscreen'}]}]));
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+   {label:'Generant',submenu:[{role:'about'},{type:'separator'},{role:'quit'}]},
+   {label:'File',submenu:[
+    {label:'Render & Share…',accelerator:'CmdOrCtrl+Shift+R',click:()=>win.webContents.send('project-command','render')},
+    {label:'Render Song',click:()=>win.webContents.send('project-command','render-song')},
+    {label:'Render Pattern',click:()=>win.webContents.send('project-command','render-pattern')}
+   ]},
+   {label:'Edit',submenu:[{label:'Undo',accelerator:'CmdOrCtrl+Z',click:()=>win.webContents.send('project-command','undo')},{label:'Redo',accelerator:'CmdOrCtrl+Shift+Z',click:()=>win.webContents.send('project-command','redo')},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
+   {label:'View',submenu:[{role:'toggleDevTools'},{role:'togglefullscreen'}]}
+  ]));
   await win.loadURL(`http://127.0.0.1:${server.address().port}`);
  });
  app.on('window-all-closed',()=>{clearTimeout(recoveryTimer);remote?.close();wsRemote?.close();osc?.close();server?.close();app.quit();});

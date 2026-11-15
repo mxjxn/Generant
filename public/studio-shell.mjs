@@ -23,6 +23,7 @@ export function buildShell(){
  for(const id of ['load','save','ambient'])menu.append($('#'+id));$('#save').textContent='Save project';$('#ambient').textContent='Demo: Slow glass ambient';
  const examples=document.createElement('details');examples.id='examplesMenu';examples.innerHTML='<summary>Open Example</summary><div class=example-items></div>';menu.append(examples);const bloom=document.createElement('button');bloom.id='demoFootwork';bloom.textContent='Sideways Bloom · Footwork';examples.querySelector('div').append(bloom,$('#demoGlass'),$('#ambient'));$('#ambient').textContent='Slow glass ambient';
  const saveAs=document.createElement('button');saveAs.id='saveAs';saveAs.textContent='Save as…';menu.append(saveAs);
+ const renderShare=document.createElement('button');renderShare.id='renderShare';renderShare.textContent='Render & Share…';menu.append(renderShare);
  const rename=document.createElement('button');rename.id='renameProject';rename.textContent='Rename project…';menu.append(rename);
  const codeButton=document.createElement('button');codeButton.id='codeToggle';codeButton.textContent='Project code';menu.append(codeButton);
  const projectName=$('#projectName');projectName.hidden=true;document.body.append(projectName);

@@ -33,6 +33,11 @@ The Renoise tool currently uses:
 /generant/v1/pattern/select <pattern id or exact name>
 /generant/v1/pattern/queue <pattern id or exact name>
 /generant/v1/device/param <device id or exact name> <parameter id> <value>
+/generant/v1/render/song [format style aspect title artist videoFlag maxSeconds outDir]
+/generant/v1/render/pattern [format style aspect title artist videoFlag maxSeconds outDir pattern]
+/generant/v1/render/video [format style aspect title artist videoFlag maxSeconds outDir]
 ```
 
 Pattern and song-position queue commands wait for Generant's next pattern boundary when Generant is already playing. Select commands change the editor selection immediately. Device parameter values use the parameter's native unit and are checked by the Generant project model.
+
+Render commands are best sent over the WebSocket remote on `127.0.0.1:57143`, which returns progress events and the output file paths. See [Render & Share](render.md).
