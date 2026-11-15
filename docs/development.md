@@ -16,6 +16,7 @@
     npm run start
     npm run dev:web
     npm run compile
+    npm run render -- probe
     python3 scripts/package-bridge.py
 
 Desktop tests use the running Electron app and are named *-desktop.mjs, *-ui.mjs, or *-events-desktop.mjs. Audio library checks use the SuperSonic/SynthDef runtime and are intentionally separate from the fast default test command.

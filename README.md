@@ -19,12 +19,14 @@ The app starts with an empty project. Demo projects are available from File → 
 - SuperSonic synthdefs for FM, wavetable, VCO, granular, sample, drum, modulation, filter, dynamics, and time-based effects.
 - MIDI input, program/preset recall, audio device selection, and OSC output.
 - A Blender OSC bridge for live control and deterministic score baking.
+- Render & Share: song/pattern bounce to WAV/MP3, timeline sidecar, and social MP4 visualizers (UI, CLI, remote API).
 
 ## Documentation
 
 - [Instrument and CV devices](docs/instruments.md)
 - [Tracker and song sequencing](docs/sequencer.md)
 - [OSC and Blender integration](docs/osc-blender.md)
+- [Render & Share](docs/render.md)
 - [Renoise OSC Sequencer integration](https://github.com/mxjxn/renoise-osc-sequencer)
 - [Development and testing](docs/development.md)
 
