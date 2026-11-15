@@ -9,6 +9,8 @@ export const RENDER_ASPECTS={
 };
 export const AUDIO_FORMATS=['wav','mp3','aac'];
 export const VIDEO_FORMATS=['mp4'];
+export const OVERLAY_PLACEMENTS=['auto','top-left','top','bottom-left','bottom','safe'];
+export const COVER_MODES=['auto','frame','backdrop','off'];
 
 const finite=v=>typeof v==='number'&&Number.isFinite(v);
 const text=v=>typeof v==='string'&&v.length>0&&v.length<=240;
@@ -17,7 +19,30 @@ export function sanitizeName(name='render'){
  return String(name||'render').replace(/[^a-z0-9._-]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,80)||'render';
 }
 
-export function parseRenderOptions(raw={}){
+/** Social-safe margins as fractions of width/height. */
+export function safeMargins(aspect='vertical'){
+ if(aspect==='square')return{top:.1,bottom:.1,left:.08,right:.08};
+ if(aspect==='landscape')return{top:.1,bottom:.12,left:.08,right:.08};
+ return{top:.12,bottom:.18,left:.06,right:.06}; // vertical / Reels / Shorts
+}
+
+export function defaultPlacement(aspect='vertical'){
+ return aspect==='landscape'?'bottom-left':'top-left';
+}
+
+export function defaultCoverMode(style='pulse'){
+ return style==='lattice'||style==='bars'?'frame':'backdrop';
+}
+
+/** Pull title/artist defaults from project when fields are blank. */
+export function projectRenderMeta(project={}){
+ const title=String(project.name||'').slice(0,80);
+ const artist=String(project.artist||project.meta?.artist||project.meta?.author||'Generant').slice(0,80);
+ const coverPath=project.coverPath||project.meta?.coverPath||null;
+ return{title,artist,coverPath};
+}
+
+export function parseRenderOptions(raw={},project=null){
  const mode=raw.mode==='pattern'?'pattern':'song';
  const format=AUDIO_FORMATS.includes(raw.format)?raw.format:'wav';
  const videoFormat=VIDEO_FORMATS.includes(raw.videoFormat)?raw.videoFormat:'mp4';
@@ -27,21 +52,29 @@ export function parseRenderOptions(raw={}){
  const tail=finite(raw.tail)?Math.max(0,Math.min(8,raw.tail)):1.5;
  const sampleRate=finite(raw.sampleRate)?Math.round(raw.sampleRate):48000;
  if(sampleRate<22050||sampleRate>96000)throw Error('Sample rate must be 22050–96000.');
+ const meta=project?projectRenderMeta(project):{title:'',artist:'',coverPath:null};
+ const title=(typeof raw.title==='string'&&raw.title.length)?raw.title.slice(0,80):(meta.title||'');
+ const artist=(typeof raw.artist==='string'&&raw.artist.length)?raw.artist.slice(0,80):(meta.artist||'');
+ const placement=OVERLAY_PLACEMENTS.includes(raw.placement)?raw.placement:'auto';
+ const coverMode=COVER_MODES.includes(raw.coverMode)?raw.coverMode:'auto';
+ const overlay=raw.overlay===false||raw.overlay===0||raw.overlay==='0'?false:true;
  const out={
   mode,format,videoFormat,style,aspect,fps,tail,sampleRate,
   patternId:text(raw.patternId)?raw.patternId:null,
   pattern:text(raw.pattern)?raw.pattern:null,
   bankLane:text(raw.bankLane)?raw.bankLane:null,
-  title:typeof raw.title==='string'?raw.title.slice(0,80):'',
-  artist:typeof raw.artist==='string'?raw.artist.slice(0,80):'',
-  coverPath:text(raw.coverPath)?raw.coverPath:null,
+  title,artist,
+  overlay,placement,
+  coverPath:text(raw.coverPath)?raw.coverPath:(text(meta.coverPath)?meta.coverPath:null),
+  coverMode,
   outDir:text(raw.outDir)?raw.outDir:null,
   outBase:text(raw.outBase)?sanitizeName(raw.outBase):null,
   stems:!!raw.stems,
   video:raw.video!==false,
   normalize:raw.normalize!==false,
   preview:!!raw.preview,
-  maxSeconds:finite(raw.maxSeconds)?Math.max(1,Math.min(600,raw.maxSeconds)):null
+  maxSeconds:finite(raw.maxSeconds)?Math.max(1,Math.min(600,raw.maxSeconds)):null,
+  previewFrames:finite(raw.previewFrames)?Math.max(0,Math.min(12,Math.round(raw.previewFrames))):4
  };
  return out;
 }

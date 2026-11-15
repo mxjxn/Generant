@@ -39,12 +39,14 @@ else {
   ipcMain.handle('osc-enable',(_e,value)=>osc.enable(value));ipcMain.handle('osc-reset',()=>osc.reset());ipcMain.on('osc-send',(_e,batch)=>{try{osc.send(batch);}catch(e){console.error(e.message);}});
   server=await(await import('./server.mjs')).serve();
   win=new BrowserWindow({width:1450,height:960,minWidth:850,minHeight:650,backgroundColor:'#151819',title:'Generant',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  const jobTypes=new Set(['render','renderQueueAdd','renderQueueList','renderQueueCancel','renderQueueClear']);
   const dispatchRemote=command=>{
-   if(command.type==='render'){
+   if(jobTypes.has(command.type)){
     const id='job'+(++jobQueryId);
+    const timeoutMs=command.type==='render'?Math.max(180000,((command.maxSeconds||180)+30)*1000):15000;
     return new Promise((resolve,reject)=>{
      if(!win)return reject(Error('No window.'));
-     const timer=setTimeout(()=>{if(jobPending.has(id)){jobPending.delete(id);reject(Error('Render job timed out.'));}},Math.max(180000,((command.maxSeconds||180)+30)*1000));
+     const timer=setTimeout(()=>{if(jobPending.has(id)){jobPending.delete(id);reject(Error('Remote job timed out.'));}},timeoutMs);
      jobPending.set(id,{
       resolve:value=>{clearTimeout(timer);resolve(value);},
       reject:error=>{clearTimeout(timer);reject(error);},
@@ -76,6 +78,13 @@ else {
   ipcMain.handle('export-render-to',async(_e,payload)=>{
    const {writeRenderBundle}=await import('./render-export.mjs');
    return writeRenderBundle(payload,msg=>win?.webContents.send('render-progress',msg));
+  });
+  ipcMain.handle('pick-render-folder',async()=>(await import('./render-export.mjs')).pickRenderFolder(win));
+  ipcMain.handle('pick-cover-image',async()=>(await import('./render-export.mjs')).pickCoverImage(win));
+  ipcMain.handle('reveal-path',async(_e,target)=>(await import('./render-export.mjs')).revealPath(target));
+  ipcMain.on('render-event',(_e,payload)=>{
+   // Fan out queue progress/completion to all WS clients (Telegram agents, etc.).
+   wsRemote?.broadcast?.({event:'render/'+(payload?.event||'update'),...payload});
   });
   ipcMain.handle('save-project',(_e,text,saveAs)=>save(text,saveAs));
   ipcMain.handle('load-project',async()=>{const choice=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'Rack project',extensions:['json']}]});if(choice.canceled)return null;const file=choice.filePaths[0];if((await fs.stat(file)).size>110000000)throw Error('Project too large');return{text:await fs.readFile(file,'utf8'),path:file};});

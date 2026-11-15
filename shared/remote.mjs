@@ -3,6 +3,34 @@ const text=value=>typeof value==='string'&&value.length>0&&value.length<=160;
 
 export const REMOTE_PREFIX='/generant/v1';
 
+function parseRenderArgs(args=[],{mode='song'}={}){
+ // [format?, style?, aspect?, title?, artist?, videoFlag?, maxSeconds?, outDir?, pattern?, overlay?, placement?, coverPath?, coverMode?]
+ const format=args[0]==null||args[0]===''?'wav':String(args[0]);
+ if(!['wav','mp3','aac'].includes(format))throw Error('Render format must be wav, mp3, or aac.');
+ const style=args[1]==null||args[1]===''?'pulse':String(args[1]);
+ if(!['pulse','ribbons','lattice','bars'].includes(style))throw Error('Render style must be pulse, ribbons, lattice, or bars.');
+ const aspect=args[2]==null||args[2]===''?'vertical':String(args[2]);
+ if(!['vertical','square','landscape'].includes(aspect))throw Error('Aspect must be vertical, square, or landscape.');
+ const title=args[3]==null?'':String(args[3]);
+ const artist=args[4]==null?'':String(args[4]);
+ if(title.length>80||artist.length>80)throw Error('Title/artist max 80 characters.');
+ const video=args[5]==null?true:!!args[5]&&args[5]!==0&&args[5]!=='0'&&args[5]!==false;
+ const maxSeconds=args[6]==null||args[6]===0||args[6]===''?null:+args[6];
+ if(maxSeconds!==null&&(!finite(maxSeconds)||maxSeconds<1||maxSeconds>600))throw Error('maxSeconds must be 1–600.');
+ const outDir=args[7]==null||args[7]===''?null:String(args[7]);
+ if(outDir&&(outDir.length>400||outDir.includes('\0')))throw Error('Invalid outDir.');
+ const pattern=args[8]==null||args[8]===''?null:String(args[8]);
+ if(pattern&&!text(pattern))throw Error('Pattern id/name too long.');
+ const overlay=args[9]==null?true:!!args[9]&&args[9]!==0&&args[9]!=='0'&&args[9]!==false;
+ const placement=args[10]==null||args[10]===''?'auto':String(args[10]);
+ if(!['auto','top-left','top','bottom-left','bottom','safe'].includes(placement))throw Error('Invalid overlay placement.');
+ const coverPath=args[11]==null||args[11]===''?null:String(args[11]);
+ if(coverPath&&(coverPath.length>500||coverPath.includes('\0')))throw Error('Invalid coverPath.');
+ const coverMode=args[12]==null||args[12]===''?'auto':String(args[12]);
+ if(!['auto','frame','backdrop','off'].includes(coverMode))throw Error('Invalid coverMode.');
+ return{mode,format,style,aspect,title,artist,video,maxSeconds,outDir,pattern,overlay,placement,coverPath,coverMode};
+}
+
 export function remoteCommand(address,args=[]){
  if(typeof address!=='string'||!Array.isArray(args))throw Error('Invalid OSC command.');
  switch(address){
@@ -20,26 +48,18 @@ export function remoteCommand(address,args=[]){
   case REMOTE_PREFIX+'/render/song':
   case REMOTE_PREFIX+'/render/pattern':
   case REMOTE_PREFIX+'/render/video':{
-   // args: [format?, style?, aspect?, title?, artist?, videoFlag?, maxSeconds?, outDir?, pattern?]
    const mode=address.endsWith('/pattern')?'pattern':address.endsWith('/video')?'video':'song';
-   const format=args[0]==null||args[0]===''?'wav':String(args[0]);
-   if(!['wav','mp3','aac'].includes(format))throw Error('Render format must be wav, mp3, or aac.');
-   const style=args[1]==null||args[1]===''?'pulse':String(args[1]);
-   if(!['pulse','ribbons','lattice','bars'].includes(style))throw Error('Render style must be pulse, ribbons, lattice, or bars.');
-   const aspect=args[2]==null||args[2]===''?'vertical':String(args[2]);
-   if(!['vertical','square','landscape'].includes(aspect))throw Error('Aspect must be vertical, square, or landscape.');
-   const title=args[3]==null?'':String(args[3]);
-   const artist=args[4]==null?'':String(args[4]);
-   if(title.length>80||artist.length>80)throw Error('Title/artist max 80 characters.');
-   const video=args[5]==null?true:!!args[5]&&args[5]!==0&&args[5]!=='0'&&args[5]!==false;
-   const maxSeconds=args[6]==null||args[6]===0||args[6]===''?null:+args[6];
-   if(maxSeconds!==null&&(!finite(maxSeconds)||maxSeconds<1||maxSeconds>600))throw Error('maxSeconds must be 1–600.');
-   const outDir=args[7]==null||args[7]===''?null:String(args[7]);
-   if(outDir&&(outDir.length>400||outDir.includes('\0')))throw Error('Invalid outDir.');
-   const pattern=args[8]==null||args[8]===''?null:String(args[8]);
-   if(pattern&&!text(pattern))throw Error('Pattern id/name too long.');
-   return{type:'render',mode,format,style,aspect,title,artist,video,maxSeconds,outDir,pattern};
+   return{type:'render',...parseRenderArgs(args,{mode})};
   }
+  case REMOTE_PREFIX+'/render/queue/add':{
+   // First arg may be mode: song|pattern|video
+   let mode='song',rest=args;
+   if(typeof args[0]==='string'&&['song','pattern','video'].includes(args[0])){mode=args[0];rest=args.slice(1);}
+   return{type:'renderQueueAdd',...parseRenderArgs(rest,{mode})};
+  }
+  case REMOTE_PREFIX+'/render/queue/list':if(args.length)throw Error('Queue list takes no arguments.');return{type:'renderQueueList'};
+  case REMOTE_PREFIX+'/render/queue/cancel':if(args.length!==1||!text(String(args[0])))throw Error('Cancel requires a job id.');return{type:'renderQueueCancel',jobId:String(args[0])};
+  case REMOTE_PREFIX+'/render/queue/clear':if(args.length)throw Error('Queue clear takes no arguments.');return{type:'renderQueueClear'};
   default:return null;
  }
 }

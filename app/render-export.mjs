@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {dialog} from 'electron';
-import {sanitizeName,decodeWavPcm,analyzeAudio,RENDER_ASPECTS} from '../shared/render.mjs';
+import {dialog,shell} from 'electron';
+import {sanitizeName,decodeWavPcm,analyzeAudio,RENDER_ASPECTS,parseRenderOptions} from '../shared/render.mjs';
 import {iterateFrames} from '../shared/visualizer.mjs';
-import {encodeAudio,encodeVideoFromFrames,writePpmFrame,saveBinary,probeFfmpeg} from './ffmpeg.mjs';
+import {encodeAudio,encodeVideoFromFrames,writePpmFrame,saveBinary,probeFfmpeg,loadCoverRgba} from './ffmpeg.mjs';
 
 function wavBytes(payload){
  if(payload.wav instanceof Uint8Array)return Buffer.from(payload.wav);
@@ -14,7 +14,7 @@ function wavBytes(payload){
 }
 
 export async function writeRenderBundle(payload,onProgress=()=>{}){
- const options=payload.options||{};
+ const options=parseRenderOptions(payload.options||{});
  const timeline=payload.timeline;
  if(!timeline||timeline.format!=='generant-render-timeline')throw Error('Invalid render timeline.');
  const base=sanitizeName(options.outBase||timeline.name||'render');
@@ -49,9 +49,22 @@ export async function writeRenderBundle(payload,onProgress=()=>{}){
   const videoPath=path.join(dir,`${base}-${style}-${aspect}.mp4`);
   const frameLimit=options.previewFrames??4;
   const savedFrames=[];
+  let cover=null;
+  if(options.coverPath&&options.coverMode!=='off'){
+   try{
+    onProgress({progress:.76,message:'Loading cover…'});
+    cover=await loadCoverRgba(options.coverPath,{width:640,height:640});
+   }catch(error){onProgress({progress:.76,message:'Cover skipped: '+error.message});}
+  }
   async function* frames(){
    for(const frame of iterateFrames(timeline,analysis,{
-    style,aspect,fps,title:options.title||timeline.name||'',artist:options.artist||'',maxSeconds:options.maxSeconds
+    style,aspect,fps,
+    title:options.title||timeline.name||'',
+    artist:options.artist||'',
+    maxSeconds:options.maxSeconds,
+    overlay:options.overlay!==false,
+    placement:options.placement||'auto',
+    cover,coverMode:options.coverMode||'auto'
    })){
     if(savedFrames.length<frameLimit)savedFrames.push({index:frame.index,pixels:Uint8Array.from(frame.pixels),width:frame.width,height:frame.height});
     onProgress({progress:.75+.24*(frame.index/Math.max(1,frame.total-1)),message:`Video frame ${frame.index+1}/${frame.total}`});
@@ -83,4 +96,31 @@ export async function saveRenderBundle(win,payload,onProgress=()=>{}){
  const outDir=path.join(choice.filePaths[0],base);
  await fs.mkdir(outDir,{recursive:true});
  return writeRenderBundle({...payload,options:{...options,outDir,outBase:base}},onProgress);
+}
+
+export async function revealPath(target){
+ if(typeof target!=='string'||!target)throw Error('Path required.');
+ await fs.access(target);
+ shell.showItemInFolder(target);
+ return true;
+}
+
+export async function pickCoverImage(win){
+ const choice=await dialog.showOpenDialog(win,{
+  title:'Choose cover image',
+  properties:['openFile'],
+  filters:[{name:'Images',extensions:['png','jpg','jpeg','webp','gif']}]
+ });
+ if(choice.canceled||!choice.filePaths?.[0])return null;
+ return choice.filePaths[0];
+}
+
+export async function pickRenderFolder(win){
+ const choice=await dialog.showOpenDialog(win,{
+  title:'Choose folder for render output',
+  buttonLabel:'Use folder',
+  properties:['openDirectory','createDirectory']
+ });
+ if(choice.canceled||!choice.filePaths?.[0])return null;
+ return choice.filePaths[0];
 }

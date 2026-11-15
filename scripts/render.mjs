@@ -30,7 +30,11 @@ Options:
   --format wav|mp3|aac Audio container (default wav)
   --style pulse|ribbons|lattice|bars
   --aspect vertical|square|landscape
-  --title --artist     Overlay text
+  --title --artist     Overlay text (defaults from project name/meta)
+  --no-overlay         Hide title/artist text
+  --placement <preset> auto|top-left|top|bottom-left|bottom|safe
+  --cover <path>       Cover image (png/jpg/webp)
+  --cover-mode <mode>  auto|frame|backdrop|off
   --tail <sec>         Release pad after bounce (default 1.5)
   --max-seconds <n>    Clamp duration (useful for smoke tests)
   --pattern <id|name>  Pattern mode selection
@@ -39,6 +43,7 @@ Options:
   --wav <file>         Existing WAV for video-only / as audio source
   --timeline <file>    Existing timeline JSON for video-only
   --via-remote         Ask running Generant (ws://127.0.0.1:57143)
+  --queue              With --via-remote: enqueue and return jobId (do not wait)
   --fps <n>            Video frame rate (default 30)
   --frames <n>         Also write first N PPM preview frames
 `);
@@ -54,6 +59,10 @@ function args(){
   else if(t==='--aspect')out.aspect=a[++i];
   else if(t==='--title')out.title=a[++i];
   else if(t==='--artist')out.artist=a[++i];
+  else if(t==='--no-overlay')out.overlay=false;
+  else if(t==='--placement')out.placement=a[++i];
+  else if(t==='--cover')out.coverPath=a[++i];
+  else if(t==='--cover-mode')out.coverMode=a[++i];
   else if(t==='--tail')out.tail=+a[++i];
   else if(t==='--max-seconds')out.maxSeconds=+a[++i];
   else if(t==='--pattern')out.pattern=a[++i];
@@ -62,6 +71,7 @@ function args(){
   else if(t==='--wav')out.wav=a[++i];
   else if(t==='--timeline')out.timeline=a[++i];
   else if(t==='--via-remote')out.viaRemote=true;
+  else if(t==='--queue')out.queue=true;
   else if(t==='--fps')out.fps=+a[++i];
   else if(t==='--frames')out.frames=+a[++i];
   else if(t==='--help'||t==='-h')out.help=true;
@@ -116,9 +126,16 @@ async function renderVideo(dir,base,timeline,wavPath,options){
  await findFfmpeg();
  const {left,right,sampleRate}=decodeWavPcm(await fs.readFile(wavPath));
  const analysis=analyzeAudio(left,right,sampleRate);
+ let cover=null;
+ if(options.coverPath&&options.coverMode!=='off'){
+  try{cover=await (await import('../app/ffmpeg.mjs')).loadCoverRgba(options.coverPath,{width:640,height:640});}
+  catch(error){console.warn('Cover skipped:',error.message);}
+ }
  const frames=iterateFrames(timeline,analysis,{
   style:options.style,aspect:options.aspect,fps:options.fps,
-  title:options.title,artist:options.artist,maxSeconds:options.maxSeconds
+  title:options.title,artist:options.artist,maxSeconds:options.maxSeconds,
+  overlay:options.overlay!==false,placement:options.placement||'auto',
+  cover,coverMode:options.coverMode||'auto'
  });
  const first=[];
  async function* gated(){
@@ -158,6 +175,10 @@ async function main(){
   aspect:cli.aspect||'vertical',
   title:cli.title||'',
   artist:cli.artist||'',
+  overlay:cli.overlay,
+  placement:cli.placement,
+  coverPath:cli.coverPath,
+  coverMode:cli.coverMode,
   tail:cli.tail,
   maxSeconds:cli.maxSeconds,
   pattern:cli.pattern,
@@ -189,10 +210,17 @@ async function main(){
  await fs.mkdir(dir,{recursive:true});
 
  if(cli.viaRemote){
-  const result=await viaRemote('render/'+options.mode,[
+  const args=[
    options.format,options.style,options.aspect,options.title,options.artist,
-   options.video?1:0,options.maxSeconds??0,dir
-  ]);
+   options.video?1:0,options.maxSeconds??0,dir,options.pattern||'',
+   options.overlay?1:0,options.placement||'auto',options.coverPath||'',options.coverMode||'auto'
+  ];
+  if(cli.queue){
+   const result=await viaRemote('render/queue/add',[options.mode,...args]);
+   console.log(JSON.stringify({ok:true,...result},null,2));
+   return;
+  }
+  const result=await viaRemote('render/'+options.mode,args);
   console.log(JSON.stringify({ok:true,...result},null,2));
   return;
  }

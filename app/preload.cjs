@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('desktop',{
  exportBridge:()=>ipcRenderer.invoke('export-blender-bridge'),
  exportRender:(payload)=>ipcRenderer.invoke('export-render',payload),
  exportRenderTo:(payload)=>ipcRenderer.invoke('export-render-to',payload),
+ pickRenderFolder:()=>ipcRenderer.invoke('pick-render-folder'),
+ pickCoverImage:()=>ipcRenderer.invoke('pick-cover-image'),
+ revealPath:path=>ipcRenderer.invoke('reveal-path',path),
  ffmpegProbe:()=>ipcRenderer.invoke('ffmpeg-probe'),
  settings:{load:()=>ipcRenderer.invoke('hardware-load'),save:value=>ipcRenderer.invoke('hardware-save',value)},
  osc:{enable:value=>ipcRenderer.invoke('osc-enable',value),reset:()=>ipcRenderer.invoke('osc-reset'),send:batch=>ipcRenderer.send('osc-send',batch)},
@@ -21,5 +24,6 @@ contextBridge.exposeInMainWorld('desktop',{
  respondState:(id,state)=>ipcRenderer.send('remote-state-response',{id,state}),
  respondJob:(id,ok,result,error)=>ipcRenderer.send('remote-job-response',{id,ok,result,error}),
  jobProgress:(id,progress,message)=>ipcRenderer.send('remote-job-progress',{id,progress,message}),
- onRenderProgress:fn=>ipcRenderer.on('render-progress',(_e,msg)=>fn(msg))
+ onRenderProgress:fn=>{const handler=(_e,msg)=>fn(msg);ipcRenderer.on('render-progress',handler);return()=>ipcRenderer.removeListener('render-progress',handler);},
+ renderEvent:payload=>ipcRenderer.send('render-event',payload)
 });

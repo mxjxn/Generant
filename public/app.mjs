@@ -23,10 +23,10 @@ import {deviceOf,channelOf,connected,setOutput,setInsert,addKit,addKeys,addClip,
 import {Engine} from './audio.mjs';import {PianoRoll} from './roll.mjs';
 import {buildShell,mixerPanel,escape} from './studio-shell.mjs';
 import {renderPanel} from './render-panel.mjs';
-import {sanitizeName} from '/shared/render.mjs';
+import {getRenderHost} from './render-host.mjs';
 const $=s=>document.querySelector(s),store=new Store(),engine=new Engine(message),pages=buildShell(),padNames=['Kick','Snare','Hat','Texture'];
 let selectedOsc=null,oscSignature='';
-let workspace='sequencer',selectedDevice='keys',selectedTrack='track-keys',selectedChannel='channel-keys',rear=false,pendingPort=null,samplePad=0,busy=false,lastSaved=projectText(store.project),path=null,signature='',navigationKey='',remoteQueue=Promise.resolve(),renderBusy=false;
+let workspace='sequencer',selectedDevice='keys',selectedTrack='track-keys',selectedChannel='channel-keys',rear=false,pendingPort=null,samplePad=0,busy=false,lastSaved=projectText(store.project),path=null,signature='',navigationKey='',remoteQueue=Promise.resolve();
 const positions={sequencer:0,rack:0,mixer:0,samples:0},trackViews=new Map();
 try{workspace=JSON.parse(localStorage.getItem('rack-view')||'{}').workspace||workspace;}catch{}
 if(!['sequencer','rack','mixer','samples','lab','timeline'].includes(workspace))workspace='sequencer';
@@ -121,31 +121,17 @@ window.desktop?.onCommand(command=>{
  else if(command==='render-song')share.open({mode:'song'});
  else if(command==='render-pattern')share.open({mode:'pattern'});
 });
-async function runRenderJob(command,progress=()=>{}){
- if(renderBusy)throw Error('A render is already running.');
- renderBusy=true;
- try{
-  const options={
-   mode:command.mode==='pattern'?'pattern':'song',
-   format:command.format||'wav',style:command.style||'pulse',aspect:command.aspect||'vertical',
-   title:command.title||store.project.name||'',artist:command.artist||'',
-   video:command.mode==='video'?true:command.video!==false,maxSeconds:command.maxSeconds||null,pattern:command.pattern||null,
-   outDir:command.outDir||null,outBase:sanitizeName((command.title||store.project.name||'render')+'-'+(command.mode||'song')),
-   previewFrames:3
-  };
-  progress(0.01,'Booting bounce…');
-  const result=await engine.render(store.project,options,(p,msg)=>progress(p*0.55,msg));
-  progress(0.6,'Writing files…');
-  if(!window.desktop?.exportRenderTo&&!window.desktop?.exportRender)throw Error('Desktop export bridge unavailable.');
-  const payload={options,timeline:result.timeline,wav:Array.from(new Uint8Array(result.wav)),sampleRate:result.sampleRate};
-  let saved;
-  if(options.outDir)saved=await window.desktop.exportRenderTo(payload);
-  else saved=await window.desktop.exportRender(payload);
-  if(!saved)throw Error('Render canceled.');
-  progress(1,'Done');
-  message('Render complete: '+(saved.files?.video||saved.files?.audio||saved.dir));
-  return saved;
- }finally{renderBusy=false;}
+const renderHost=getRenderHost({store,engine,report:message});
+function renderOptsFromCommand(command){
+ return{
+  mode:command.mode==='pattern'?'pattern':'song',
+  format:command.format||'wav',style:command.style||'pulse',aspect:command.aspect||'vertical',
+  title:command.title,artist:command.artist,
+  video:command.mode==='video'?true:command.video!==false,
+  maxSeconds:command.maxSeconds||null,pattern:command.pattern||null,
+  outDir:command.outDir||null,overlay:command.overlay,placement:command.placement,
+  coverPath:command.coverPath,coverMode:command.coverMode,previewFrames:3
+ };
 }
 window.desktop?.onRemoteCommand(command=>{remoteQueue=remoteQueue.then(()=>audioAction(async()=>{
  const findPattern=value=>store.project.song.patterns.find(p=>p.id===value||p.name===value);
@@ -163,11 +149,29 @@ window.desktop?.onRemoteCommand(command=>{remoteQueue=remoteQueue.then(()=>audio
   else if(command.type==='bankLane'){const device=deviceOf(store.project,command.device)??store.project.studio.devices.find(d=>d.name===command.device);if(!device)throw Error('OSC device was not found.');const def=store.project.banks?.defs.find(def=>def.instrument===device.type&&def.patterns.some(p=>p.id===command.pattern||p.name===command.pattern));if(!def)throw Error('No bank for this device carries that pattern.');const pat=def.patterns.find(p=>p.id===command.pattern||p.name===command.pattern);store.edit(p=>{p.banks.lanes=p.banks.lanes.filter(l=>l.deviceId!==device.id);const lane=newBankLane('lane-'+crypto.randomUUID().slice(0,8),device.id,def.id,pat.id);lane.transpose=command.transpose;p.banks.lanes.push(lane);});}
   else if(command.type==='render'){
    const progress=(p,msg)=>{if(command.requestId)window.desktop.jobProgress(command.requestId,p,msg);};
-   const saved=await runRenderJob(command,progress);
-   reply(true,saved);message('OSC: render');return;
+   const unsub=renderHost.subscribe(payload=>{
+    if(payload.event==='progress'&&payload.jobId)progress(payload.progress,payload.message);
+   });
+   try{
+    const {jobId,result}=await renderHost.enqueue(renderOptsFromCommand(command),{wait:true});
+    reply(true,{...result,jobId});message('OSC: render');return;
+   }finally{unsub();}
+  }
+  else if(command.type==='renderQueueAdd'){
+   const {jobId}=await renderHost.enqueue(renderOptsFromCommand(command),{wait:false});
+   reply(true,{jobId,queued:true});message('OSC: renderQueueAdd '+jobId);return;
+  }
+  else if(command.type==='renderQueueList'){
+   reply(true,{jobs:renderHost.list()});return;
+  }
+  else if(command.type==='renderQueueCancel'){
+   reply(true,{job:renderHost.cancel(command.jobId)});return;
+  }
+  else if(command.type==='renderQueueClear'){
+   renderHost.clearFinished();reply(true,{ok:true,jobs:renderHost.list()});return;
   }
   message('OSC: '+command.type);
-  if(command.requestId&&command.type!=='render')reply(true,{ok:true});
+  if(command.requestId)reply(true,{ok:true});
  }catch(e){if(command.requestId)reply(false,null,e.message);throw e;}
 }));});
 function animate(){if(workspace==='sequencer')song.animate();if(workspace==='sequencer'&&selectedOsc)osc.animate();if(workspace==='sequencer'&&!selectedOsc&&editor==='tracker')grid.animate(engine.beat,engine.playing&&engine.playbackPosition?.patternId===store.project.song.editPatternId);if(workspace==='rack')stack.animate();if(workspace==='mixer')mixer.animate();if(workspace==='sequencer'&&editor==='piano'&&!selectedOsc&&['keys','kit','clip'].includes(deviceOf(store.project,track().deviceId)?.type))roll.draw();const beat=engine.beat;$('#position').textContent=`${Math.floor(beat/4)+1} : ${Math.floor(beat%4)+1}`;$('#meterFill').style.width=Math.min(100,Math.sqrt(engine.peak)*100)+'%';$('#peak').textContent=engine.peak>1e-5?units.gain(engine.peak):'−∞ dB';if(workspace==='sequencer'&&!selectedOsc&&deviceOf(store.project,track().deviceId)?.type==='drums')$('#drumEditor').querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('current',engine.playing&&+b.dataset.step.split(',')[1]===Math.floor(beat*4)));requestAnimationFrame(animate);}
@@ -176,7 +180,7 @@ const hardware=await hardwareSettings({engine,store,grid,getDevice:()=>workspace
 $('#hardwareButton').onclick=()=>hardware.open();
 window.rack={presets:{schedule:(deviceId,beat,slot,column=0)=>store.edit(p=>editFx(p,deviceId,beat,column,'PR '+slot.toString(16).padStart(2,'0'))),store:(deviceId,slot,name)=>{let id;store.edit(p=>id=storePreset(p,deviceId,slot,name));return id;},recall:(deviceId,presetId)=>store.edit(p=>recallPreset(p,deviceId,presetId)),recallProgram:(deviceId,slot)=>{const preset=programPreset(store.project,deviceId,slot);if(!preset)throw Error('Empty program slot');store.edit(p=>recallPreset(p,deviceId,preset.id));}},song,osc,hardware,store,engine,roll,stack,grid,samples,banksPanel:banks,get instrument(){return stack.get(selectedDevice);},loadProject,showDevice,showChannel,selectTrack,changeWorkspace,get workspace(){return workspace;},get selection(){return{selectedDevice,selectedTrack,selectedChannel,selectedOsc};}};
 function remoteState(){const p=store.project;
- return {playing:engine.playing,rendering:!!renderBusy||!!engine.rendering,bpm:p.bpm,pattern:p.song?.editPatternId,
+ return {playing:engine.playing,rendering:!!engine.rendering||renderHost.list().some(j=>j.status==='bouncing'||j.status==='encoding'||j.status==='queued'),bpm:p.bpm,pattern:p.song?.editPatternId,
   devices:p.studio.devices.map(d=>({id:d.id,type:d.type,name:d.name,params:d.params??{}})),
   patterns:(p.song?.patterns??[]).map(x=>({id:x.id,name:x.name,rows:x.rows,lpb:x.lpb})),
   banks:{defs:(p.banks?.defs??[]).map(def=>({id:def.id,name:def.name,instrument:def.instrument,key:def.key,scale:def.scale,patterns:def.patterns.map(x=>({id:x.id,name:x.name}))})),lanes:p.banks?.lanes??[]}};}

@@ -29,7 +29,7 @@ export class WsRemote{
       else{
        const id=msg.id??null;
        const payload={...command,at:msg.at??null};
-       if(command.type==='render'){
+       if(command.type==='render'||command.type==='renderQueueAdd'||command.type==='renderQueueList'||command.type==='renderQueueCancel'||command.type==='renderQueueClear'){
         payload.requestId=id;
         payload.progress=(p,message)=>this.safeSend(socket,{id,event:'progress',progress:p,message});
        }

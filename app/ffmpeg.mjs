@@ -110,3 +110,26 @@ export async function probeFfmpeg(){
  try{const bin=await findFfmpeg();return {ok:true,path:bin};}
  catch(e){return {ok:false,error:e.message};}
 }
+
+/** Decode an image to a fixed RGBA canvas via ffmpeg (letterboxed). */
+export async function loadCoverRgba(coverPath,{width=640,height=640}={}){
+ if(!coverPath)return null;
+ await fs.access(coverPath);
+ const bin=await findFfmpeg();
+ const w=Math.max(2,width|0),h=Math.max(2,height|0);
+ const vf=`scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`;
+ const expected=w*h*4;
+ return new Promise((resolve,reject)=>{
+  const child=spawn(bin,['-v','error','-i',coverPath,'-frames:v','1','-vf',vf,'-f','rawvideo','-pix_fmt','rgba','pipe:1'],{stdio:['ignore','pipe','pipe']});
+  const chunks=[];let err='';
+  child.stdout.on('data',d=>chunks.push(d));
+  child.stderr.on('data',d=>err+=d);
+  child.on('error',reject);
+  child.on('close',code=>{
+   if(code!==0)return reject(Error('Cover decode failed: '+(err.slice(-400)||code)));
+   const pixels=Buffer.concat(chunks);
+   if(pixels.length!==expected)return reject(Error(`Cover size mismatch (${pixels.length}≠${expected}).`));
+   resolve({width:w,height:h,pixels:new Uint8Array(pixels)});
+  });
+ });
+}
