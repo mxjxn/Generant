@@ -86,10 +86,12 @@ export function getRenderHost({engine,store,report=()=>{}}={}){
   list:()=>queue.list(),
   meta(){return projectRenderMeta(store.project);},
   async enqueue(raw={},{wait=false}={}){
-   await ensureOutParent();
    const options=parseRenderOptions(raw,store.project);
    if(!options.outBase)options.outBase=sanitizeName((options.title||store.project.name||'render')+'-'+options.mode);
-   if(!options.outDir)options.outDir=`${host.lastOutParent}/${options.outBase}`;
+   if(!options.outDir){
+    await ensureOutParent();
+    options.outDir=`${host.lastOutParent}/${options.outBase}`;
+   }
    const id=queue.add(options);
    if(wait){
     const result=await queue.wait(id);
